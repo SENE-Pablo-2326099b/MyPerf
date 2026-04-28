@@ -38,6 +38,15 @@ yarn-error.*
 
 app-example
 
-# generated native folders
+# generated native folders (recréés par `npx expo prebuild`)
 /ios
 /android
+
+# Outils / output générés
+graphify-out/
+
+# Secrets supplémentaires
+.env
+.env.*
+google-services.json
+GoogleService-Info.plist
