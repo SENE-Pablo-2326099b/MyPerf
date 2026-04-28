@@ -1,5 +1,6 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import ProgressChart from '@/features/stats/ProgressChart';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
@@ -39,10 +40,9 @@ const ANGLE_SHORT: Record<string, string> = {
 };
 
 function ExerciseCard({ exercise, onPress }: Props) {
-  const {
-    theme: { colors },
-  } = useTheme();
+  const { theme: { colors } } = useTheme();
   const translateX = useSharedValue(0);
+  const [showChart, setShowChart] = useState(false);
 
   const handleDelete = useCallback(async () => {
     await database.write(async () => {
@@ -97,6 +97,13 @@ function ExerciseCard({ exercise, onPress }: Props) {
         <Animated.View
           style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, cardStyle]}
         >
+          <TouchableOpacity
+            style={[styles.chartBtn, { borderColor: colors.border }]}
+            onPress={() => setShowChart(true)}
+            hitSlop={6}
+          >
+            <Ionicons name="stats-chart-outline" size={15} color={colors.accent} />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.cardInner} onPress={() => onPress(exercise)} activeOpacity={0.7}>
             {/* Nom + badges */}
             <View style={styles.topRow}>
@@ -148,6 +155,13 @@ function ExerciseCard({ exercise, onPress }: Props) {
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} style={styles.chevron} />
         </Animated.View>
       </GestureDetector>
+
+      <ProgressChart
+        visible={showChart}
+        exerciseId={exercise.id}
+        exerciseName={exercise.name}
+        onClose={() => setShowChart(false)}
+      />
     </View>
   );
 }
@@ -167,6 +181,12 @@ const styles = StyleSheet.create({
   deleteLabel: { color: '#fff', fontSize: 11, fontWeight: '600' },
   card: { borderRadius: 12, borderWidth: 1, flexDirection: 'row', alignItems: 'center' },
   cardInner: { flex: 1, padding: 14 },
+  chartBtn: {
+    padding: 10,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+  },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   name: { fontSize: 16, fontWeight: '600', flex: 1 },
   pill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },

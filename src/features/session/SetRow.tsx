@@ -7,6 +7,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -14,6 +22,9 @@ import { deleteSet, updateSet } from './sessionActions';
 import type WorkingSet from '@/db/models/WorkingSet';
 import type { SetType } from '@/db/models/WorkingSet';
 import type { GhostSet } from '@/hooks/useLastSets';
+
+const DELETE_THRESHOLD = -64;
+const DELETE_WIDTH = 72;
 
 const TYPE_LABELS: Record<SetType, string> = {
   warmup: 'Chauffe',
@@ -51,6 +62,7 @@ function SetRow({ set, index, ghost, onCompleted, nextRef }: Props) {
   const weightRef = useRef<TextInput>(null);
   const repsRef = useRef<TextInput>(null);
   const [editingTempo, setEditingTempo] = useState(false);
+  const translateX = useSharedValue(0);
 
   const [te, setTe] = useState(String(set.tempoEccentric));
   const [tpb, setTpb] = useState(String(set.tempoPauseBottom));
@@ -115,11 +127,28 @@ function SetRow({ set, index, ghost, onCompleted, nextRef }: Props) {
   }, [set, onCompleted]);
 
   const confirmDelete = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert('Supprimer la série ?', undefined, [
-      { text: 'Annuler', style: 'cancel' },
+      { text: 'Annuler', style: 'cancel', onPress: () => { translateX.value = withSpring(0); } },
       { text: 'Supprimer', style: 'destructive', onPress: () => deleteSet(set) },
     ]);
-  }, [set]);
+  }, [set, translateX]);
+
+  const pan = Gesture.Pan()
+    .activeOffsetX([-6, 6])
+    .onUpdate(e => {
+      translateX.value = Math.max(-DELETE_WIDTH * 1.4, Math.min(0, e.translationX));
+    })
+    .onEnd(() => {
+      if (translateX.value < DELETE_THRESHOLD) {
+        translateX.value = withTiming(-DELETE_WIDTH);
+        runOnJS(confirmDelete)();
+      } else {
+        translateX.value = withSpring(0);
+      }
+    });
+
+  const rowStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
 
   const typeColor = TYPE_COLORS[set.setType] ?? colors.accent;
   const tempoStr = formatTempo(
@@ -130,7 +159,14 @@ function SetRow({ set, index, ghost, onCompleted, nextRef }: Props) {
   const showGhostReps = ghost && ghost.reps != null;
 
   return (
-    <View style={[styles.wrapper, { borderBottomColor: colors.border, opacity: set.completed ? 0.55 : 1 }]}>
+    <View style={[styles.wrapper, { borderBottomColor: colors.border }]}>
+      {/* Zone delete */}
+      <View style={[styles.deleteZone, { backgroundColor: colors.danger }]}>
+        <Ionicons name="trash-outline" size={16} color="#fff" />
+      </View>
+
+      <GestureDetector gesture={pan}>
+        <Animated.View style={[{ opacity: set.completed ? 0.55 : 1 }, rowStyle]}>
       {/* ── Main row ── */}
       <View style={styles.mainRow}>
         <Text style={[styles.index, { color: colors.textMuted }]}>{index + 1}</Text>
@@ -270,12 +306,23 @@ function SetRow({ set, index, ghost, onCompleted, nextRef }: Props) {
           </TouchableOpacity>
         </View>
       )}
+        </Animated.View>
+      </GestureDetector>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: { borderBottomWidth: StyleSheet.hairlineWidth },
+  wrapper: { borderBottomWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
+  deleteZone: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: DELETE_WIDTH,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   mainRow: {
     flexDirection: 'row',
     alignItems: 'center',
