@@ -4,6 +4,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { useSessions } from '@/hooks/useSessions';
 import { useWeeklyVolume } from '@/hooks/useWeeklyVolume';
 import SessionCard from '@/features/history/SessionCard';
+import BodyMap from '@/features/stats/BodyMap';
 
 const GROUP_FR: Record<string, string> = {
   chest: 'Pecto',
@@ -68,17 +69,20 @@ function WeeklyVolume() {
       </View>
 
       {hasData ? (
-        <View style={styles.barsContainer}>
-          {GROUP_ORDER.map(group => (
-            <VolumeBar
-              key={group}
-              label={GROUP_FR[group] ?? group}
-              sets={volume[group] ?? 0}
-              max={maxSets}
-              accent={colors.accent}
-            />
-          ))}
-        </View>
+        <>
+          <View style={styles.barsContainer}>
+            {GROUP_ORDER.map(group => (
+              <VolumeBar
+                key={group}
+                label={GROUP_FR[group] ?? group}
+                sets={volume[group] ?? 0}
+                max={maxSets}
+                accent={colors.accent}
+              />
+            ))}
+          </View>
+          <BodyMap />
+        </>
       ) : (
         <View style={styles.emptyVolume}>
           <Text style={[styles.emptyVolumeText, { color: colors.textMuted }]}>
