@@ -7,6 +7,7 @@ export { default as TemplateExercise } from './TemplateExercise';
 export { default as ScheduledSession } from './ScheduledSession';
 export { default as Macrocycle } from './Macrocycle';
 export { default as Mesocycle } from './Mesocycle';
+export { default as Microcycle } from './Microcycle';
 export type { Equipment, ExerciseType } from './Exercise';
 export type { Intention } from './ExerciseInstance';
 export type { SetType } from './WorkingSet';

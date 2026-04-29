@@ -105,5 +105,33 @@ export const migrations = schemaMigrations({
         }),
       ],
     },
+    {
+      toVersion: 5,
+      steps: [
+        createTable({
+          name: 'microcycles',
+          columns: [
+            { name: 'mesocycle_id', type: 'string', isIndexed: true },
+            { name: 'week_number', type: 'number' },
+            { name: 'label', type: 'string' },
+            { name: 'volume_pct', type: 'number' },
+            { name: 'notes', type: 'string', isOptional: true },
+            { name: 'created_at', type: 'number' },
+            { name: 'updated_at', type: 'number' },
+          ],
+        }),
+      ],
+    },
+    {
+      toVersion: 6,
+      steps: [
+        addColumns({
+          table: 'scheduled_sessions',
+          columns: [
+            { name: 'volume_pct', type: 'number', isOptional: true },
+          ],
+        }),
+      ],
+    },
   ],
 });

@@ -20,6 +20,7 @@ import { useActiveSession } from '@/hooks/useActiveSession';
 import ScheduleModal from '@/features/planning/ScheduleModal';
 import TemplateEditor from '@/features/planning/TemplateEditor';
 import CreateMesocycleWizard from '@/features/planning/CreateMesocycleWizard';
+import CreateMacrocycleModal from '@/features/planning/CreateMacrocycleModal';
 import MesocycleTimeline from '@/features/planning/MesocycleTimeline';
 import { BLOCK_COLORS, BLOCK_LABELS } from '@/features/planning/blockUtils';
 import { useMesocycles } from '@/hooks/useMesocycles';
@@ -162,6 +163,8 @@ function ScheduledCard({
   const blockColor = scheduled.blockType ? BLOCK_COLORS[scheduled.blockType] : colors.accent;
   const blockLabel = scheduled.blockType ? BLOCK_LABELS[scheduled.blockType] : null;
   const isStarted = scheduled.sessionId != null;
+  const vol = scheduled.volumePct;
+  const volColor = vol != null && vol <= 70 ? '#8B5CF6' : vol != null && vol >= 110 ? '#EF4444' : colors.textMuted;
 
   return (
     <View style={[styles.sessionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -180,6 +183,9 @@ function ScheduledCard({
             <View style={[styles.blockBadge, { backgroundColor: blockColor + '22' }]}>
               <Text style={[styles.blockBadgeText, { color: blockColor }]}>{blockLabel}</Text>
             </View>
+          )}
+          {vol != null && (
+            <Text style={[styles.volBadge, { color: volColor }]}>{vol}% vol.</Text>
           )}
           {isStarted ? (
             <View style={[styles.startedBadge, { backgroundColor: colors.success + '22' }]}>
@@ -281,6 +287,7 @@ export default function PlanningScreen() {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<WorkoutTemplate | null | undefined>(undefined);
   const [showMesoWizard, setShowMesoWizard] = useState(false);
+  const [showMacroModal, setShowMacroModal] = useState(false);
   const [mesoRefreshKey, setMesoRefreshKey] = useState(0);
 
   const weekEnd = new Date(monday);
@@ -371,13 +378,18 @@ export default function PlanningScreen() {
           <MesocycleTimeline
             mesocycles={mesocycles}
             macrocycles={macrocycles}
-            onCreatePress={() => setShowMesoWizard(true)}
+            onCreateMeso={() => setShowMesoWizard(true)}
+            onCreateMacro={() => setShowMacroModal(true)}
             refreshKey={mesoRefreshKey}
             onRefresh={() => setMesoRefreshKey(k => k + 1)}
           />
           <CreateMesocycleWizard
             visible={showMesoWizard}
             onClose={() => setShowMesoWizard(false)}
+          />
+          <CreateMacrocycleModal
+            visible={showMacroModal}
+            onClose={() => setShowMacroModal(false)}
           />
         </>
       ) : tab === 'calendar' ? (
@@ -529,6 +541,7 @@ const styles = StyleSheet.create({
   startBtnText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   startedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   startedText: { fontSize: 11, fontWeight: '600' },
+  volBadge: { fontSize: 11, fontWeight: '700', fontVariant: ['tabular-nums'] },
   durationText: { fontSize: 13 },
   sessionTime: { fontSize: 12 },
   emptyDay: { alignItems: 'center', paddingTop: 40, gap: 12 },

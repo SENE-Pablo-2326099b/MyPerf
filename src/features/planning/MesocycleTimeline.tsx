@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeProvider';
 import { BLOCK_COLORS, BLOCK_LABELS } from './blockUtils';
-import { countMesocycleSessions, deleteMesocycle } from './mesocycleActions';
+import { MICRO_COLORS, MICRO_LABELS } from './microcycleUtils';
+import { countMesocycleSessions, deleteMacrocycle, deleteMesocycle } from './mesocycleActions';
 import { getMesocycleStatus, getMesocycleWeek } from '@/db/models/Mesocycle';
-import { Alert } from 'react-native';
+import { useMicrocycles } from '@/hooks/useMicrocycles';
+import MicrocycleEditor from './MicrocycleEditor';
 import type Mesocycle from '@/db/models/Mesocycle';
 import type Macrocycle from '@/db/models/Macrocycle';
 
@@ -22,14 +24,8 @@ function TimelineBar({ mesocycles }: { mesocycles: Mesocycle[] }) {
 
   if (mesocycles.length === 0) return null;
 
-  const globalStart = mesocycles.reduce(
-    (min, m) => Math.min(min, m.startDate.getTime()),
-    Infinity,
-  );
-  const globalEnd = mesocycles.reduce(
-    (max, m) => Math.max(max, m.endDate.getTime()),
-    -Infinity,
-  );
+  const globalStart = mesocycles.reduce((min, m) => Math.min(min, m.startDate.getTime()), Infinity);
+  const globalEnd = mesocycles.reduce((max, m) => Math.max(max, m.endDate.getTime()), -Infinity);
   const totalMs = globalEnd - globalStart || 1;
   const now = Date.now();
   const todayPct = Math.max(0, Math.min(1, (now - globalStart) / totalMs));
@@ -43,7 +39,6 @@ function TimelineBar({ mesocycles }: { mesocycles: Mesocycle[] }) {
           const width = (m.endDate.getTime() - m.startDate.getTime()) / totalMs;
           const color = BLOCK_COLORS[m.blockType];
           const status = getMesocycleStatus(m);
-
           return (
             <View
               key={m.id}
@@ -59,22 +54,73 @@ function TimelineBar({ mesocycles }: { mesocycles: Mesocycle[] }) {
             />
           );
         })}
-
-        {/* Curseur aujourd'hui */}
         {showToday && (
           <View style={[styles.todayCursor, { left: `${todayPct * 100}%`, backgroundColor: colors.text }]} />
         )}
       </View>
-
-      {/* Labels */}
       <View style={styles.timelineLabels}>
         <Text style={[styles.timelineLabel, { color: colors.textMuted }]}>{fmtDate(new Date(globalStart))}</Text>
-        {showToday && (
-          <Text style={[styles.timelineLabelCenter, { color: colors.text }]}>Auj.</Text>
-        )}
+        {showToday && <Text style={[styles.timelineLabelCenter, { color: colors.text }]}>Auj.</Text>}
         <Text style={[styles.timelineLabel, { color: colors.textMuted }]}>{fmtDate(new Date(globalEnd))}</Text>
       </View>
     </View>
+  );
+}
+
+// ── Microcycle summary inline ─────────────────────────────────────────────────
+
+function MicroSummary({ mesocycle }: { mesocycle: Mesocycle }) {
+  const { theme: { colors, radius, mode } } = useTheme();
+  const isNeo = mode === 'neo';
+  const micros = useMicrocycles(mesocycle.id);
+  const [showEditor, setShowEditor] = useState(false);
+
+  return (
+    <>
+      <View style={[styles.microSection, { borderTopColor: colors.border }]}>
+        <View style={styles.microHeader}>
+          <Text style={[styles.microTitle, { color: colors.textMuted, letterSpacing: isNeo ? 1 : 0 }]}>
+            {isNeo ? 'MICROCYCLES' : 'Microcycles'}
+          </Text>
+          <TouchableOpacity onPress={() => setShowEditor(true)} hitSlop={8}>
+            <Text style={[styles.microEditBtn, { color: colors.accent }]}>
+              {micros.length > 0 ? (isNeo ? 'MODIFIER' : 'Modifier') : (isNeo ? 'CONFIGURER' : 'Configurer')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {micros.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.microScroll}>
+            {micros.map(m => (
+              <View key={m.id} style={[styles.microChip, {
+                backgroundColor: MICRO_COLORS[m.label] + '18',
+                borderColor: MICRO_COLORS[m.label] + '55',
+                borderRadius: radius.sm,
+              }]}>
+                <Text style={[styles.microChipWeek, { color: colors.textMuted }]}>S{m.weekNumber}</Text>
+                <Text style={[styles.microChipLabel, { color: MICRO_COLORS[m.label] }]}>
+                  {MICRO_LABELS[m.label]}
+                </Text>
+                <Text style={[styles.microChipVol, { color: MICRO_COLORS[m.label] }]}>
+                  {m.volumePct}%
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
+        ) : (
+          <Text style={[styles.microEmpty, { color: colors.textMuted }]}>
+            Semaines non configurées — touche Configurer pour définir le volume par semaine.
+          </Text>
+        )}
+      </View>
+
+      <MicrocycleEditor
+        visible={showEditor}
+        mesocycle={mesocycle}
+        existingMicrocycles={micros}
+        onClose={() => setShowEditor(false)}
+      />
+    </>
   );
 }
 
@@ -130,28 +176,29 @@ function MesocycleCard({ mesocycle, onDeleted }: { mesocycle: Mesocycle; onDelet
               {mesocycle.name}
             </Text>
             {status === 'active' && (
-              <View style={[styles.activePill, { backgroundColor: color + '22', borderRadius: radius.sm }]}>
+              <View style={[styles.statusPill, { backgroundColor: color + '22', borderRadius: radius.sm }]}>
                 <View style={[styles.activeDot, { backgroundColor: color }]} />
-                <Text style={[styles.activeText, { color }]}>
-                  {isNeo ? 'ACTIF' : 'Actif'}
-                </Text>
+                <Text style={[styles.statusText, { color }]}>{isNeo ? 'ACTIF' : 'Actif'}</Text>
               </View>
             )}
             {status === 'completed' && (
-              <View style={[styles.activePill, { backgroundColor: colors.border, borderRadius: radius.sm }]}>
+              <View style={[styles.statusPill, { backgroundColor: colors.border, borderRadius: radius.sm }]}>
                 <Ionicons name="checkmark" size={10} color={colors.textMuted} />
-                <Text style={[styles.activeText, { color: colors.textMuted }]}>Terminé</Text>
+                <Text style={[styles.statusText, { color: colors.textMuted }]}>Terminé</Text>
+              </View>
+            )}
+            {status === 'upcoming' && (
+              <View style={[styles.statusPill, { backgroundColor: color + '15', borderRadius: radius.sm }]}>
+                <Text style={[styles.statusText, { color }]}>{isNeo ? 'À VENIR' : 'À venir'}</Text>
               </View>
             )}
           </View>
-
           <View style={[styles.blockBadge, { backgroundColor: color + '18', borderRadius: radius.sm }]}>
             <Text style={[styles.blockBadgeText, { color, letterSpacing: isNeo ? 1 : 0 }]}>
               {BLOCK_LABELS[mesocycle.blockType].toUpperCase()}
             </Text>
           </View>
         </View>
-
         <TouchableOpacity onPress={handleDelete} hitSlop={12} style={styles.deleteBtn}>
           <Ionicons name="trash-outline" size={15} color={colors.textMuted} />
         </TouchableOpacity>
@@ -196,6 +243,57 @@ function MesocycleCard({ mesocycle, onDeleted }: { mesocycle: Mesocycle; onDelet
           {mesocycle.notes}
         </Text>
       ) : null}
+
+      {/* Microcycles */}
+      <MicroSummary mesocycle={mesocycle} />
+    </View>
+  );
+}
+
+// ── Macrocycle section header ─────────────────────────────────────────────────
+
+function MacrocycleHeader({
+  macrocycle,
+  onDelete,
+}: {
+  macrocycle: Macrocycle;
+  onDelete: () => void;
+}) {
+  const { theme: { colors, mode } } = useTheme();
+  const isNeo = mode === 'neo';
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Supprimer ce macrocycle ?',
+      `"${macrocycle.name}" — les mésocycles liés deviendront indépendants.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Supprimer', style: 'destructive', onPress: async () => { await deleteMacrocycle(macrocycle); onDelete(); } },
+      ],
+    );
+  };
+
+  const dateStr = macrocycle.endDate
+    ? `${fmtDate(macrocycle.startDate)} → ${fmtDate(macrocycle.endDate)}`
+    : `Depuis le ${fmtDate(macrocycle.startDate)}`;
+
+  return (
+    <View style={styles.macroHeader}>
+      <Ionicons name="layers-outline" size={13} color={colors.accent} />
+      <View style={styles.macroHeaderCenter}>
+        <Text style={[styles.macroName, { color: colors.accent, letterSpacing: isNeo ? 1 : 0 }]}>
+          {macrocycle.name.toUpperCase()}
+        </Text>
+        <Text style={[styles.macroDates, { color: colors.textMuted }]}>{dateStr}</Text>
+        {macrocycle.goalDescription ? (
+          <Text style={[styles.macroGoal, { color: colors.textMuted }]} numberOfLines={1}>
+            {macrocycle.goalDescription}
+          </Text>
+        ) : null}
+      </View>
+      <TouchableOpacity onPress={handleDelete} hitSlop={12}>
+        <Ionicons name="trash-outline" size={14} color={colors.textMuted} />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -205,21 +303,22 @@ function MesocycleCard({ mesocycle, onDeleted }: { mesocycle: Mesocycle; onDelet
 interface Props {
   mesocycles: Mesocycle[];
   macrocycles: Macrocycle[];
-  onCreatePress: () => void;
-  refreshKey: number;
+  onCreateMeso: () => void;
+  onCreateMacro: () => void;
+  refreshKey?: number;
   onRefresh: () => void;
 }
 
-export default function MesocycleTimeline({ mesocycles, macrocycles, onCreatePress, refreshKey, onRefresh }: Props) {
+export default function MesocycleTimeline({
+  mesocycles,
+  macrocycles,
+  onCreateMeso,
+  onCreateMacro,
+  onRefresh,
+}: Props) {
   const { theme: { colors, radius, mode } } = useTheme();
   const isNeo = mode === 'neo';
 
-  const grouped = macrocycles.length > 0
-    ? macrocycles.map(mc => ({
-        macro: mc,
-        mesos: mesocycles.filter(m => m.macrocycleId === mc.id),
-      })).filter(g => g.mesos.length > 0)
-    : null;
   const orphan = mesocycles.filter(m => !m.macrocycleId);
 
   return (
@@ -234,40 +333,52 @@ export default function MesocycleTimeline({ mesocycles, macrocycles, onCreatePre
         </View>
       )}
 
-      {/* Blocs groupés par macrocycle */}
-      {grouped?.map(({ macro, mesos }) => (
-        <View key={macro.id} style={styles.macroGroup}>
-          <View style={styles.macroHeader}>
-            <Ionicons name="layers-outline" size={13} color={colors.accent} />
-            <Text style={[styles.macroName, { color: colors.accent, letterSpacing: isNeo ? 1 : 0 }]}>
-              {macro.name.toUpperCase()}
-            </Text>
+      {/* Macrocycles avec leurs mésocycles */}
+      {macrocycles.map(mc => {
+        const mesos = mesocycles.filter(m => m.macrocycleId === mc.id);
+        return (
+          <View key={mc.id} style={styles.macroGroup}>
+            <MacrocycleHeader macrocycle={mc} onDelete={onRefresh} />
+            {mesos.length > 0
+              ? mesos.map(m => <MesocycleCard key={m.id} mesocycle={m} onDeleted={onRefresh} />)
+              : (
+                <View style={[styles.macroEmpty, { borderColor: colors.border, borderRadius: radius.sm }]}>
+                  <Text style={[styles.macroEmptyText, { color: colors.textMuted }]}>
+                    Aucun bloc dans ce macrocycle. Crée un mésocycle et rattache-le.
+                  </Text>
+                </View>
+              )
+            }
           </View>
-          {mesos.map(m => (
-            <MesocycleCard key={m.id} mesocycle={m} onDeleted={onRefresh} />
-          ))}
-        </View>
-      ))}
+        );
+      })}
 
       {/* Blocs sans macrocycle */}
-      {orphan.map(m => (
-        <MesocycleCard key={m.id} mesocycle={m} onDeleted={onRefresh} />
-      ))}
+      {orphan.length > 0 && (
+        <View style={styles.orphanSection}>
+          {macrocycles.length > 0 && (
+            <Text style={[styles.orphanTitle, { color: colors.textMuted, letterSpacing: isNeo ? 1 : 0 }]}>
+              {isNeo ? 'SANS MACROCYCLE' : 'Sans macrocycle'}
+            </Text>
+          )}
+          {orphan.map(m => <MesocycleCard key={m.id} mesocycle={m} onDeleted={onRefresh} />)}
+        </View>
+      )}
 
-      {/* Empty state */}
-      {mesocycles.length === 0 && (
+      {/* Empty state global */}
+      {mesocycles.length === 0 && macrocycles.length === 0 && (
         <View style={[styles.empty, { borderColor: colors.border, borderRadius: radius.md }]}>
           <Ionicons name="layers-outline" size={40} color={colors.border} />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>
-            {isNeo ? 'AUCUN BLOC' : 'Aucun bloc de periodisation'}
+            {isNeo ? 'AUCUN BLOC' : 'Aucun bloc de périodisation'}
           </Text>
           <Text style={[styles.emptySub, { color: colors.textMuted }]}>
-            Crée ton premier mésocycle pour planifier tes entraînements sur plusieurs semaines.
+            Crée un macrocycle pour organiser ta saison, puis des mésocycles pour planifier tes entraînements.
           </Text>
         </View>
       )}
 
-      {/* FAB-like create button */}
+      {/* Actions */}
       <TouchableOpacity
         style={[styles.createBtn, {
           backgroundColor: colors.accent,
@@ -277,12 +388,26 @@ export default function MesocycleTimeline({ mesocycles, macrocycles, onCreatePre
           shadowRadius: 12,
           shadowOffset: { width: 0, height: 4 },
         }]}
-        onPress={onCreatePress}
+        onPress={onCreateMeso}
         activeOpacity={0.85}
       >
         <Ionicons name="add" size={20} color="#000" />
         <Text style={[styles.createBtnText, { letterSpacing: isNeo ? 1 : 0 }]}>
-          {isNeo ? 'NOUVEAU BLOC' : 'Nouveau bloc'}
+          {isNeo ? 'NOUVEAU BLOC (MÉSO)' : 'Nouveau bloc'}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.createMacroBtn, {
+          borderColor: colors.accent,
+          borderRadius: radius.md,
+        }]}
+        onPress={onCreateMacro}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="layers-outline" size={18} color={colors.accent} />
+        <Text style={[styles.createMacroBtnText, { color: colors.accent, letterSpacing: isNeo ? 1 : 0 }]}>
+          {isNeo ? 'NOUVEAU MACROCYCLE' : 'Nouveau macrocycle'}
         </Text>
       </TouchableOpacity>
     </ScrollView>
@@ -304,32 +429,61 @@ const styles = StyleSheet.create({
   timelineLabelCenter: { fontSize: 10, fontWeight: '700' },
 
   macroGroup: { gap: 8 },
-  macroHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 2 },
+  macroHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingLeft: 2, paddingRight: 4 },
+  macroHeaderCenter: { flex: 1, gap: 1 },
   macroName: { fontSize: 11, fontWeight: '800' },
+  macroDates: { fontSize: 10 },
+  macroGoal: { fontSize: 11, fontStyle: 'italic' },
+  macroEmpty: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    padding: 14,
+    alignItems: 'center',
+  },
+  macroEmptyText: { fontSize: 12, textAlign: 'center', lineHeight: 18 },
+
+  orphanSection: { gap: 8 },
+  orphanTitle: { fontSize: 11, fontWeight: '700', paddingLeft: 2 },
 
   mesoCard: { borderWidth: 1, padding: 14, gap: 10 },
   mesoCardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   mesoCardLeft: { flex: 1, gap: 6 },
   mesoNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   mesoName: { fontSize: 16, fontWeight: '800', flexShrink: 1 },
-  activePill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3 },
+  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3 },
   activeDot: { width: 6, height: 6, borderRadius: 3 },
-  activeText: { fontSize: 10, fontWeight: '800' },
+  statusText: { fontSize: 10, fontWeight: '800' },
   blockBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3 },
   blockBadgeText: { fontSize: 10, fontWeight: '800' },
   deleteBtn: { padding: 2 },
-
   mesoMeta: { flexDirection: 'row', justifyContent: 'space-between' },
   metaText: { fontSize: 12 },
-
   weekBar: { padding: 10, gap: 6 },
   weekBarInfo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   weekLabel: { fontSize: 10, fontWeight: '700' },
   weekValue: { fontSize: 13, fontWeight: '800', fontVariant: ['tabular-nums'] },
   weekProgress: { height: 4, overflow: 'hidden' },
   weekProgressFill: { height: '100%' },
-
   mesoNotes: { fontSize: 12, fontStyle: 'italic', lineHeight: 18 },
+
+  // Microcycles inline
+  microSection: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10, gap: 8 },
+  microHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  microTitle: { fontSize: 10, fontWeight: '700' },
+  microEditBtn: { fontSize: 11, fontWeight: '700' },
+  microScroll: { flexGrow: 0 },
+  microChip: {
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    marginRight: 8,
+    gap: 1,
+    alignItems: 'center',
+  },
+  microChipWeek: { fontSize: 9, fontWeight: '700' },
+  microChipLabel: { fontSize: 11, fontWeight: '700' },
+  microChipVol: { fontSize: 10, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  microEmpty: { fontSize: 11, lineHeight: 16 },
 
   empty: { borderWidth: 1, borderStyle: 'dashed', padding: 32, alignItems: 'center', gap: 12 },
   emptyTitle: { fontSize: 16, fontWeight: '800', textAlign: 'center' },
@@ -344,4 +498,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   createBtnText: { fontSize: 14, fontWeight: '800', color: '#000' },
+  createMacroBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 13,
+    borderWidth: 1.5,
+    marginTop: 4,
+  },
+  createMacroBtnText: { fontSize: 13, fontWeight: '800' },
 });

@@ -1,7 +1,7 @@
 import { Database } from '@nozbe/watermelondb';
 import { NativeModules, Platform, TurboModuleRegistry } from 'react-native';
 import { migrations } from './migrations';
-import { Exercise, ExerciseInstance, Macrocycle, Mesocycle, ScheduledSession, Session, TemplateExercise, WorkingSet, WorkoutTemplate } from './models';
+import { Exercise, ExerciseInstance, Macrocycle, Mesocycle, Microcycle, ScheduledSession, Session, TemplateExercise, WorkingSet, WorkoutTemplate } from './models';
 import { schema } from './schema';
 
 // ── New Architecture / RN 0.81 compatibility ──────────────────────────────
@@ -91,5 +91,5 @@ const adapter = new SQLiteAdapter({
 
 export const database = new Database({
   adapter,
-  modelClasses: [Exercise, Session, ExerciseInstance, WorkingSet, WorkoutTemplate, TemplateExercise, ScheduledSession, Macrocycle, Mesocycle],
+  modelClasses: [Exercise, Session, ExerciseInstance, WorkingSet, WorkoutTemplate, TemplateExercise, ScheduledSession, Macrocycle, Mesocycle, Microcycle],
 });

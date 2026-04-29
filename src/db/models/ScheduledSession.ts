@@ -11,6 +11,7 @@ export default class ScheduledSession extends Model {
   @date('planned_date') plannedDate!: Date;
   @field('title') title!: string | null;
   @field('block_type') blockType!: BlockType | null;
+  @field('volume_pct') volumePct!: number | null;
   @field('notes') notes!: string | null;
   @readonly @date('created_at') createdAt!: Date;
   @date('updated_at') updatedAt!: Date;

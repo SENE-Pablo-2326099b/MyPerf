@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export const schema = appSchema({
-  version: 4,
+  version: 6,
   tables: [
     tableSchema({
       name: 'exercises',
@@ -113,6 +113,7 @@ export const schema = appSchema({
         { name: 'planned_date', type: 'number', isIndexed: true },
         { name: 'title', type: 'string', isOptional: true },
         { name: 'block_type', type: 'string', isOptional: true },
+        { name: 'volume_pct', type: 'number', isOptional: true },
         { name: 'notes', type: 'string', isOptional: true },
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number' },
@@ -143,6 +144,20 @@ export const schema = appSchema({
         { name: 'end_date', type: 'number' },
         // JSON : [{isoDay: 1..7, templateId: string}]
         { name: 'week_pattern', type: 'string' },
+        { name: 'notes', type: 'string', isOptional: true },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
+      ],
+    }),
+
+    // ── Microcycles (semaines dans un mésocycle) ──────────────────────────────
+    tableSchema({
+      name: 'microcycles',
+      columns: [
+        { name: 'mesocycle_id', type: 'string', isIndexed: true },
+        { name: 'week_number', type: 'number' },
+        { name: 'label', type: 'string' },
+        { name: 'volume_pct', type: 'number' },
         { name: 'notes', type: 'string', isOptional: true },
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number' },

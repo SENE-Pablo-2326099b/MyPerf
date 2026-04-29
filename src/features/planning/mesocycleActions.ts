@@ -2,9 +2,11 @@ import { database } from '@/db/database';
 import { Q } from '@nozbe/watermelondb';
 import Mesocycle, { type WeekPattern } from '@/db/models/Mesocycle';
 import Macrocycle from '@/db/models/Macrocycle';
+import Microcycle from '@/db/models/Microcycle';
 import type WorkoutTemplate from '@/db/models/WorkoutTemplate';
 import type ScheduledSession from '@/db/models/ScheduledSession';
 import type { BlockType } from './blockUtils';
+import type { MicroLabel } from './microcycleUtils';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -41,7 +43,19 @@ export async function createMacrocycle(
 }
 
 export async function deleteMacrocycle(macrocycle: Macrocycle): Promise<void> {
-  await database.write(async () => macrocycle.destroyPermanently());
+  await database.write(async () => {
+    const linked = await database
+      .get<Mesocycle>('mesocycles')
+      .query(Q.where('macrocycle_id', macrocycle.id))
+      .fetch();
+    for (const m of linked) {
+      await m.update(me => {
+        me.macrocycleId = null;
+        me.updatedAt = new Date();
+      });
+    }
+    await macrocycle.destroyPermanently();
+  });
 }
 
 // ── Mésocycle ─────────────────────────────────────────────────────────────────
@@ -88,9 +102,12 @@ export async function updateMesocycle(
   );
 }
 
+const MS_WEEK = 7 * 24 * 3600 * 1000;
+
 /**
  * Génère toutes les ScheduledSessions entre startDate et endDate
  * selon le week_pattern du mésocycle.
+ * Si des microcycles sont définis, applique leur volume_pct à chaque séance.
  * Retourne le nombre de séances créées.
  */
 export async function generateMesocycleSessions(
@@ -98,6 +115,16 @@ export async function generateMesocycleSessions(
   templates: WorkoutTemplate[],
 ): Promise<number> {
   const templateMap = Object.fromEntries(templates.map(t => [t.id, t]));
+
+  // Charge les microcycles pour ce mésocycle
+  const micros = await database
+    .get<Microcycle>('microcycles')
+    .query(Q.where('mesocycle_id', mesocycle.id))
+    .fetch();
+  const microByWeek: Record<number, number> = {};
+  for (const m of micros) microByWeek[m.weekNumber] = m.volumePct;
+
+  const mesoStart = midnight(mesocycle.startDate).getTime();
   const now = new Date();
   let count = 0;
 
@@ -111,13 +138,17 @@ export async function generateMesocycleSessions(
 
       if (entry && templateMap[entry.templateId]) {
         const template = templateMap[entry.templateId];
+        const weekNumber = Math.floor((cursor.getTime() - mesoStart) / MS_WEEK) + 1;
+        const volumePct = microByWeek[weekNumber] ?? null;
         const date = new Date(cursor);
+
         await database.get<ScheduledSession>('scheduled_sessions').create(ss => {
           ss.templateId = entry.templateId;
           ss.mesocycleId = mesocycle.id;
           ss.plannedDate = date;
           ss.blockType = mesocycle.blockType;
           ss.title = template.name;
+          ss.volumePct = volumePct;
           ss.updatedAt = now;
         });
         count++;
@@ -133,12 +164,19 @@ export async function generateMesocycleSessions(
 /**
  * Supprime un mésocycle.
  * Si deleteScheduled=true, supprime aussi toutes les séances planifiées liées.
+ * Supprime toujours les microcycles associés.
  */
 export async function deleteMesocycle(
   mesocycle: Mesocycle,
   deleteScheduled: boolean,
 ): Promise<void> {
   await database.write(async () => {
+    const micros = await database
+      .get<Microcycle>('microcycles')
+      .query(Q.where('mesocycle_id', mesocycle.id))
+      .fetch();
+    for (const m of micros) await m.destroyPermanently();
+
     if (deleteScheduled) {
       const linked = await database
         .get<ScheduledSession>('scheduled_sessions')
@@ -149,6 +187,40 @@ export async function deleteMesocycle(
       }
     }
     await mesocycle.destroyPermanently();
+  });
+}
+
+// ── Microcycles ───────────────────────────────────────────────────────────────
+
+export interface MicroWeek {
+  weekNumber: number;
+  label: MicroLabel;
+  volumePct: number;
+  notes: string | null;
+}
+
+/** Remplace entièrement les microcycles d'un mésocycle. */
+export async function saveMicrocycles(
+  mesocycleId: string,
+  weeks: MicroWeek[],
+): Promise<void> {
+  const now = new Date();
+  await database.write(async () => {
+    const existing = await database
+      .get<Microcycle>('microcycles')
+      .query(Q.where('mesocycle_id', mesocycleId))
+      .fetch();
+    for (const m of existing) await m.destroyPermanently();
+    for (const w of weeks) {
+      await database.get<Microcycle>('microcycles').create(m => {
+        m.mesocycleId = mesocycleId;
+        m.weekNumber = w.weekNumber;
+        m.label = w.label;
+        m.volumePct = w.volumePct;
+        m.notes = w.notes;
+        m.updatedAt = now;
+      });
+    }
   });
 }
 

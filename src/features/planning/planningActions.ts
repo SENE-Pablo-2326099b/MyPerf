@@ -73,6 +73,10 @@ export async function startFromTemplate(
     templateExercises.map(te => getLastWeightForExercise(te.exerciseId)),
   );
 
+  // Facteur de volume issu du microcycle (null = 100%)
+  const volumePct = scheduledSession?.volumePct ?? 100;
+  const scaleSet = (n: number) => Math.max(1, Math.round(n * volumePct / 100));
+
   return database.write(async () => {
     const session = await database.get<Session>('sessions').create(s => {
       s.startedAt = new Date();
@@ -90,6 +94,8 @@ export async function startFromTemplate(
       const exercise = exercises[i];
       const lastWeight = lastWeights[i];
 
+      const scaledTargetSets = scaleSet(te.targetSets ?? 3);
+
       const instance = await database
         .get<ExerciseInstance>('exercise_instances')
         .create(inst => {
@@ -97,15 +103,14 @@ export async function startFromTemplate(
           inst.exercise.set(exercise);
           inst.order = te.order;
           inst.intention = te.intention;
-          inst.targetSets = te.targetSets;
+          inst.targetSets = scaledTargetSets;
           inst.repRangeMin = te.repRangeMin;
           inst.repRangeMax = te.repRangeMax;
           inst.rpeTarget = te.rpeTarget;
           inst.restSeconds = te.restSeconds;
         });
 
-      const targetSets = te.targetSets ?? 3;
-      for (let setNum = 1; setNum <= targetSets; setNum++) {
+      for (let setNum = 1; setNum <= scaledTargetSets; setNum++) {
         await database.get<WorkingSet>('working_sets').create(ws => {
           ws.exerciseInstance.set(instance);
           ws.setNumber = setNum;
