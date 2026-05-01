@@ -68,33 +68,43 @@ export default function ActiveSessionView({ session }: Props) {
         borderBottomColor: isNeo ? colors.accent + '30' : colors.border,
         borderBottomWidth: isNeo ? 1 : StyleSheet.hairlineWidth,
       }]}>
+        {/* Timer + live dot */}
         <View style={styles.timerBlock}>
           <View style={[styles.liveDot, {
             backgroundColor: colors.success,
             shadowColor: colors.success,
-            shadowOpacity: isNeo ? 0.8 : 0,
-            shadowRadius: 4,
+            shadowOpacity: 0.8,
+            shadowRadius: isNeo ? 6 : 3,
             shadowOffset: { width: 0, height: 0 },
           }]} />
-          <Text style={[styles.timer, { color: colors.text, letterSpacing: isNeo ? 2 : 0 }]}>
+          <Text style={[styles.timer, { color: colors.text, letterSpacing: isNeo ? 3 : 1 }]}>
             {formatDuration(elapsed)}
           </Text>
         </View>
-        <Text style={[styles.headerMeta, { color: colors.textMuted }]}>
-          {instances.length} exo{instances.length !== 1 ? 's' : ''}
-          {completedSets > 0 ? ` · ${session.name ?? 'Libre'}` : ''}
-        </Text>
+
+        {/* Session info */}
+        <View style={styles.headerCenter}>
+          <Text style={[styles.sessionName, { color: colors.text }]} numberOfLines={1}>
+            {session.name ?? 'Séance libre'}
+          </Text>
+          <Text style={[styles.headerMeta, { color: colors.textMuted }]}>
+            {instances.length} exercice{instances.length !== 1 ? 's' : ''}
+          </Text>
+        </View>
+
+        {/* End button */}
         <TouchableOpacity
           style={[styles.endBtn, {
-            backgroundColor: colors.danger + '15',
-            borderColor: colors.danger + '40',
-            borderRadius: radius.sm,
+            backgroundColor: colors.danger + '18',
+            borderColor: colors.danger + '50',
+            borderRadius: radius.md,
           }]}
           onPress={() => setShowEndModal(true)}
           activeOpacity={0.75}
         >
+          <Ionicons name="stop-circle-outline" size={14} color={colors.danger} />
           <Text style={[styles.endBtnText, { color: colors.danger, letterSpacing: isNeo ? 0.8 : 0 }]}>
-            {isNeo ? 'FIN' : 'Terminer'}
+            {isNeo ? 'FIN' : 'Fin'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -108,12 +118,16 @@ export default function ActiveSessionView({ session }: Props) {
       >
         {instances.length === 0 ? (
           <View style={styles.emptyState}>
-            <View style={[styles.emptyIcon, { borderColor: colors.border, borderRadius: isNeo ? 4 : 40 }]}>
-              <Ionicons name="add" size={36} color={colors.textMuted} />
+            <View style={[styles.emptyIcon, {
+              borderColor: colors.accent + '40',
+              borderRadius: isNeo ? 8 : 48,
+              backgroundColor: colors.accent + '0C',
+            }]}>
+              <Ionicons name="barbell-outline" size={44} color={colors.accent} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>Séance en cours</Text>
             <Text style={[styles.emptySub, { color: colors.textMuted }]}>
-              Appuie sur + pour ajouter ton premier exercice.
+              Appuie sur <Text style={{ color: colors.accent, fontWeight: '700' }}>+</Text> pour ajouter ton premier exercice.
             </Text>
           </View>
         ) : (
@@ -131,17 +145,18 @@ export default function ActiveSessionView({ session }: Props) {
       <TouchableOpacity
         style={[styles.fab, {
           backgroundColor: colors.accent,
-          borderRadius: isNeo ? 8 : 28,
+          borderRadius: isNeo ? 10 : 30,
           shadowColor: colors.accent,
-          shadowOpacity: isNeo ? 0.5 : 0.3,
-          shadowRadius: isNeo ? 16 : 8,
-          shadowOffset: { width: 0, height: 4 },
-          elevation: 8,
+          shadowOpacity: 0.45,
+          shadowRadius: isNeo ? 20 : 10,
+          shadowOffset: { width: 0, height: 5 },
+          elevation: 10,
         }]}
         onPress={() => setShowPicker(true)}
         activeOpacity={0.85}
       >
-        <Ionicons name="add" size={28} color="#000" />
+        <Ionicons name="add" size={22} color="#000" />
+        <Text style={styles.fabLabel}>Exercice</Text>
       </TouchableOpacity>
 
       {/* ── Rest timer ── */}
@@ -215,30 +230,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 11,
-    gap: 10,
+    paddingTop: 14,
+    paddingBottom: 12,
+    gap: 12,
   },
   timerBlock: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  liveDot: { width: 7, height: 7, borderRadius: 4 },
-  timer: { fontSize: 19, fontWeight: '800', fontVariant: ['tabular-nums'] },
-  headerMeta: { flex: 1, fontSize: 12 },
-  endBtn: { paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1 },
+  liveDot: { width: 8, height: 8, borderRadius: 4 },
+  timer: { fontSize: 32, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  headerCenter: { flex: 1, gap: 1 },
+  sessionName: { fontSize: 13, fontWeight: '700' },
+  headerMeta: { fontSize: 11 },
+  endBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+  },
   endBtnText: { fontSize: 12, fontWeight: '800' },
   scroll: { flex: 1 },
   scrollContent: { paddingTop: 12, paddingBottom: 120 },
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 14, paddingHorizontal: 40 },
-  emptyIcon: { width: 80, height: 80, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  emptyTitle: { fontSize: 18, fontWeight: '800' },
+  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 16, paddingHorizontal: 40 },
+  emptyIcon: { width: 88, height: 88, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  emptyTitle: { fontSize: 20, fontWeight: '800', letterSpacing: -0.3 },
   emptySub: { fontSize: 14, textAlign: 'center', lineHeight: 22 },
   fab: {
     position: 'absolute',
     bottom: 24,
-    right: 20,
-    width: 54,
-    height: 54,
-    justifyContent: 'center',
+    right: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
   },
+  fabLabel: { fontSize: 14, fontWeight: '800', color: '#000' },
   modalOverlay: {
     flex: 1,
     backgroundColor: '#00000088',

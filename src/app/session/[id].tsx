@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import ProgressChart from '@/features/stats/ProgressChart';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Q } from '@nozbe/watermelondb';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +38,7 @@ interface SetRow {
 
 interface InstanceRow {
   id: string;
+  exerciseId: string;
   exerciseName: string;
   intention: Intention;
   sets: SetRow[];
@@ -83,6 +85,7 @@ export default function SessionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { theme: { colors } } = useTheme();
   const [detail, setDetail] = useState<Detail | null>(null);
+  const [chartExercise, setChartExercise] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -106,6 +109,7 @@ export default function SessionDetailScreen() {
 
           return {
             id: inst.id,
+            exerciseId: ex?.id ?? '',
             exerciseName: ex?.name ?? '?',
             intention: inst.intention,
             sets: sets.map(s => ({
@@ -208,10 +212,20 @@ export default function SessionDetailScreen() {
           <View key={inst.id} style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={[styles.cardHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.exerciseName, { color: colors.text }]}>{inst.exerciseName}</Text>
-              <View style={[styles.intentionBadge, { backgroundColor: colors.accent + '18' }]}>
-                <Text style={[styles.intentionText, { color: colors.accent }]}>
-                  {INTENTION_LABELS[inst.intention] ?? inst.intention}
-                </Text>
+              <View style={styles.cardHeaderRight}>
+                <View style={[styles.intentionBadge, { backgroundColor: colors.accent + '18' }]}>
+                  <Text style={[styles.intentionText, { color: colors.accent }]}>
+                    {INTENTION_LABELS[inst.intention] ?? inst.intention}
+                  </Text>
+                </View>
+                {inst.exerciseId !== '' && (
+                  <TouchableOpacity
+                    hitSlop={10}
+                    onPress={() => setChartExercise({ id: inst.exerciseId, name: inst.exerciseName })}
+                  >
+                    <Ionicons name="stats-chart-outline" size={16} color={colors.textMuted} />
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
 
@@ -272,6 +286,15 @@ export default function SessionDetailScreen() {
           </View>
         )}
       </ScrollView>
+
+      {chartExercise && (
+        <ProgressChart
+          visible
+          exerciseId={chartExercise.id}
+          exerciseName={chartExercise.name}
+          onClose={() => setChartExercise(null)}
+        />
+      )}
     </View>
   );
 }
@@ -337,6 +360,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   exerciseName: { fontSize: 16, fontWeight: '700', flex: 1 },
+  cardHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   intentionBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   intentionText: { fontSize: 11, fontWeight: '700' },
   colHeaders: {

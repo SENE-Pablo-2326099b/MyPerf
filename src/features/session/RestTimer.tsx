@@ -9,6 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/theme/ThemeProvider';
+import WheelPicker from '@/components/WheelPicker';
 import type { Intention } from '@/db/models/ExerciseInstance';
 
 export const REST_DEFAULTS: Record<Intention, number> = {
@@ -27,17 +28,29 @@ const INTENTION_LABELS: Record<Intention, string> = {
   metabolic: 'MÉTABOLIQUE',
 };
 
+const MIN_VALUES = Array.from({ length: 16 }, (_, i) => i);   // 0–15 min
+const SEC_VALUES = [0, 15, 30, 45];
+
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+function nearestSec(s: number): number {
+  return SEC_VALUES.reduce((prev, cur) =>
+    Math.abs(cur - s) < Math.abs(prev - s) ? cur : prev,
+  );
+}
+
 export default function RestTimer({ intention, onDismiss }: { intention: Intention; onDismiss: () => void }) {
   const { theme: { colors, radius, mode } } = useTheme();
   const isNeo = mode === 'neo';
-  const defaultSeconds = REST_DEFAULTS[intention];
-  const [remaining, setRemaining] = useState(defaultSeconds);
+  const [totalSeconds, setTotalSeconds] = useState(REST_DEFAULTS[intention]);
+  const [remaining, setRemaining] = useState(REST_DEFAULTS[intention]);
+  const [editingDur, setEditingDur] = useState(false);
+  const [editMin, setEditMin] = useState<number | null>(Math.floor(REST_DEFAULTS[intention] / 60));
+  const [editSec, setEditSec] = useState<number | null>(nearestSec(REST_DEFAULTS[intention] % 60));
   const slideAnim = useRef(new Animated.Value(140)).current;
 
   useEffect(() => {
@@ -45,17 +58,16 @@ export default function RestTimer({ intention, onDismiss }: { intention: Intenti
   }, [slideAnim]);
 
   useEffect(() => {
+    if (editingDur) return;
     if (remaining <= 0) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       onDismiss();
       return;
     }
-    if (remaining === 10) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    if (remaining === 10) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const id = setTimeout(() => setRemaining(r => r - 1), 1000);
     return () => clearTimeout(id);
-  }, [remaining, onDismiss]);
+  }, [remaining, onDismiss, editingDur]);
 
   const adjust = useCallback((delta: number) => setRemaining(r => Math.max(1, r + delta)), []);
 
@@ -63,8 +75,22 @@ export default function RestTimer({ intention, onDismiss }: { intention: Intenti
     Animated.timing(slideAnim, { toValue: 140, duration: 200, useNativeDriver: true }).start(onDismiss);
   }, [slideAnim, onDismiss]);
 
-  const progress = remaining / defaultSeconds;
-  const isWarning = remaining <= 10;
+  const openEdit = useCallback(() => {
+    setEditMin(Math.floor(remaining / 60));
+    setEditSec(nearestSec(remaining % 60));
+    setEditingDur(true);
+  }, [remaining]);
+
+  const confirmEdit = useCallback(() => {
+    const newSecs = Math.max(1, (editMin ?? 0) * 60 + (editSec ?? 0));
+    setTotalSeconds(newSecs);
+    setRemaining(newSecs);
+    setEditingDur(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [editMin, editSec]);
+
+  const progress = remaining / totalSeconds;
+  const isWarning = remaining <= 10 && !editingDur;
   const timerColor = isWarning ? colors.danger : colors.accent;
 
   return (
@@ -84,12 +110,10 @@ export default function RestTimer({ intention, onDismiss }: { intention: Intenti
     ]}>
       {/* Top bar */}
       <View style={styles.topBar}>
-        <View style={styles.titleRow}>
-          <View style={[styles.intentBadge, { backgroundColor: timerColor + '18', borderRadius: radius.sm }]}>
-            <Text style={[styles.intentLabel, { color: timerColor, letterSpacing: isNeo ? 1 : 0 }]}>
-              {INTENTION_LABELS[intention]}
-            </Text>
-          </View>
+        <View style={[styles.intentBadge, { backgroundColor: timerColor + '18', borderRadius: radius.sm }]}>
+          <Text style={[styles.intentLabel, { color: timerColor, letterSpacing: isNeo ? 1 : 0 }]}>
+            {INTENTION_LABELS[intention]}
+          </Text>
         </View>
         <TouchableOpacity onPress={dismiss} hitSlop={12}>
           <Ionicons name="close" size={18} color={colors.textMuted} />
@@ -99,7 +123,7 @@ export default function RestTimer({ intention, onDismiss }: { intention: Intenti
       {/* Progress bar */}
       <View style={[styles.progressBg, { backgroundColor: colors.border, borderRadius: radius.sm }]}>
         <View style={[styles.progressFill, {
-          width: `${progress * 100}%`,
+          width: `${Math.max(0, Math.min(1, progress)) * 100}%`,
           backgroundColor: timerColor,
           borderRadius: radius.sm,
           shadowColor: timerColor,
@@ -109,28 +133,58 @@ export default function RestTimer({ intention, onDismiss }: { intention: Intenti
         }]} />
       </View>
 
-      {/* Controls */}
-      <View style={styles.body}>
-        <TouchableOpacity
-          style={[styles.adjBtn, { borderColor: colors.border, borderRadius: radius.sm }]}
-          onPress={() => adjust(-30)}
-          hitSlop={8}
-        >
-          <Text style={[styles.adjText, { color: colors.textMuted }]}>-30s</Text>
-        </TouchableOpacity>
+      {editingDur ? (
+        /* ── Duration picker ── */
+        <View style={styles.pickerRow}>
+          <WheelPicker
+            values={MIN_VALUES}
+            selected={editMin}
+            onChange={setEditMin}
+            formatLabel={v => v == null ? '0' : `${v}m`}
+            width={72}
+          />
+          <Text style={[styles.pickerSep, { color: colors.textMuted }]}>:</Text>
+          <WheelPicker
+            values={SEC_VALUES}
+            selected={editSec}
+            onChange={setEditSec}
+            formatLabel={v => v == null ? '00' : String(v).padStart(2, '0')}
+            width={72}
+          />
+          <TouchableOpacity
+            style={[styles.confirmBtn, { backgroundColor: colors.accent, borderRadius: radius.sm }]}
+            onPress={confirmEdit}
+          >
+            <Ionicons name="checkmark" size={18} color="#000" />
+          </TouchableOpacity>
+        </View>
+      ) : (
+        /* ── Countdown + adj buttons ── */
+        <View style={styles.body}>
+          <TouchableOpacity
+            style={[styles.adjBtn, { borderColor: colors.border, borderRadius: radius.sm }]}
+            onPress={() => adjust(-30)}
+            hitSlop={8}
+          >
+            <Text style={[styles.adjText, { color: colors.textMuted }]}>-30s</Text>
+          </TouchableOpacity>
 
-        <Text style={[styles.countdown, { color: timerColor, letterSpacing: isNeo ? 4 : 0 }]}>
-          {formatTime(remaining)}
-        </Text>
+          <TouchableOpacity onPress={openEdit} hitSlop={8} style={styles.countdownHit}>
+            <Text style={[styles.countdown, { color: timerColor, letterSpacing: isNeo ? 4 : 0 }]}>
+              {formatTime(remaining)}
+            </Text>
+            <Ionicons name="pencil-outline" size={12} color={colors.textMuted} style={styles.editIcon} />
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.adjBtn, { borderColor: colors.border, borderRadius: radius.sm }]}
-          onPress={() => adjust(30)}
-          hitSlop={8}
-        >
-          <Text style={[styles.adjText, { color: colors.textMuted }]}>+30s</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            style={[styles.adjBtn, { borderColor: colors.border, borderRadius: radius.sm }]}
+            onPress={() => adjust(30)}
+            hitSlop={8}
+          >
+            <Text style={[styles.adjText, { color: colors.textMuted }]}>+30s</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <TouchableOpacity
         style={[styles.skipBtn, { backgroundColor: colors.accent, borderRadius: radius.sm }]}
@@ -157,7 +211,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   intentBadge: { paddingHorizontal: 8, paddingVertical: 3 },
   intentLabel: { fontSize: 10, fontWeight: '800' },
   progressBg: { height: 3, overflow: 'hidden' },
@@ -169,7 +222,23 @@ const styles = StyleSheet.create({
   },
   adjBtn: { paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1 },
   adjText: { fontSize: 13, fontWeight: '700' },
+  countdownHit: { alignItems: 'center' },
   countdown: { fontSize: 52, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  editIcon: { marginTop: -4 },
+  pickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  pickerSep: { fontSize: 28, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  confirmBtn: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
   skipBtn: {
     flexDirection: 'row',
     alignItems: 'center',

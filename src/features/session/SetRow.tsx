@@ -23,8 +23,8 @@ import type WorkingSet from '@/db/models/WorkingSet';
 import type { SetType } from '@/db/models/WorkingSet';
 import type { GhostSet } from '@/hooks/useLastSets';
 
-const DELETE_THRESHOLD = -64;
-const DELETE_WIDTH = 72;
+const DELETE_THRESHOLD = -72;
+const DELETE_WIDTH = 84;
 
 const TYPE_LABELS: Record<SetType, string> = {
   warmup: 'Chauffe',
@@ -44,7 +44,7 @@ const TYPE_COLORS: Record<SetType, string> = {
   myoreps: '#10B981',
 };
 
-function formatTempo(e: number, pb: number, c: number, pt: number): string {
+function fmt(e: number, pb: number, c: number, pt: number): string {
   if (e === 0 && pb === 0 && c === 0 && pt === 0) return '—';
   return `${e}-${pb}-${c === -1 ? 'X' : c}-${pt}`;
 }
@@ -58,7 +58,7 @@ interface Props {
 }
 
 function SetRow({ set, index, ghost, onCompleted, nextRef }: Props) {
-  const { theme: { colors } } = useTheme();
+  const { theme: { colors, radius } } = useTheme();
   const weightRef = useRef<TextInput>(null);
   const repsRef = useRef<TextInput>(null);
   const [editingTempo, setEditingTempo] = useState(false);
@@ -86,12 +86,12 @@ function SetRow({ set, index, ghost, onCompleted, nextRef }: Props) {
 
   const handleRpe = useCallback((text: string) => {
     const n = parseFloat(text.replace(',', '.'));
-    updateSet(set, { rpe: isNaN(n) || text.trim() === '' ? null : Math.min(10, Math.max(0, n)) });
+    updateSet(set, { rpe: isNaN(n) || !text.trim() ? null : Math.min(10, Math.max(0, n)) });
   }, [set]);
 
   const handleRir = useCallback((text: string) => {
     const n = parseInt(text, 10);
-    updateSet(set, { rir: isNaN(n) || text.trim() === '' ? null : Math.min(10, Math.max(0, n)) });
+    updateSet(set, { rir: isNaN(n) || !text.trim() ? null : Math.min(10, Math.max(0, n)) });
   }, [set]);
 
   const commitTempo = useCallback(() => {
@@ -137,7 +137,7 @@ function SetRow({ set, index, ghost, onCompleted, nextRef }: Props) {
   const pan = Gesture.Pan()
     .activeOffsetX([-6, 6])
     .onUpdate(e => {
-      translateX.value = Math.max(-DELETE_WIDTH * 1.4, Math.min(0, e.translationX));
+      translateX.value = Math.max(-DELETE_WIDTH * 1.3, Math.min(0, e.translationX));
     })
     .onEnd(() => {
       if (translateX.value < DELETE_THRESHOLD) {
@@ -151,161 +151,170 @@ function SetRow({ set, index, ghost, onCompleted, nextRef }: Props) {
   const rowStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
 
   const typeColor = TYPE_COLORS[set.setType] ?? colors.accent;
-  const tempoStr = formatTempo(
-    set.tempoEccentric, set.tempoPauseBottom, set.tempoConcentric, set.tempoPauseTop,
-  );
-
+  const tempoStr = fmt(set.tempoEccentric, set.tempoPauseBottom, set.tempoConcentric, set.tempoPauseTop);
   const showGhostWeight = ghost && ghost.weight > 0;
   const showGhostReps = ghost && ghost.reps != null;
+  const numColor = set.completed ? colors.success : colors.text;
 
   return (
     <View style={[styles.wrapper, { borderBottomColor: colors.border }]}>
-      {/* Zone delete */}
-      <View style={[styles.deleteZone, { backgroundColor: colors.danger }]}>
-        <Ionicons name="trash-outline" size={16} color="#fff" />
+      {/* ── Swipe-reveal delete ── */}
+      <View style={[styles.deleteReveal, { backgroundColor: colors.danger }]}>
+        <Ionicons name="trash-outline" size={20} color="#fff" />
+        <Text style={styles.deleteRevealText}>Retirer</Text>
       </View>
 
       <GestureDetector gesture={pan}>
-        <Animated.View style={[{ opacity: set.completed ? 0.55 : 1 }, rowStyle]}>
-      {/* ── Main row ── */}
-      <View style={styles.mainRow}>
-        <Text style={[styles.index, { color: colors.textMuted }]}>{index + 1}</Text>
-
-        <TouchableOpacity
-          style={[styles.typeBadge, { backgroundColor: typeColor + '22', borderColor: typeColor + '55' }]}
-          onPress={cycleType}
-          hitSlop={8}
-        >
-          <Text style={[styles.typeText, { color: typeColor }]}>{TYPE_LABELS[set.setType]}</Text>
-        </TouchableOpacity>
-
-        {/* Weight + ghost */}
-        <View style={styles.fieldCol}>
-          <View style={styles.fieldRow}>
-            <TextInput
-              ref={weightRef}
-              style={[styles.numInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]}
-              defaultValue={set.weight > 0 ? String(set.weight) : ''}
-              onEndEditing={e => handleWeight(e.nativeEvent.text)}
-              keyboardType="decimal-pad"
-              placeholder="0"
-              placeholderTextColor={colors.textMuted}
-              selectTextOnFocus
-              returnKeyType="next"
-              onSubmitEditing={() => repsRef.current?.focus()}
-            />
-            <Text style={[styles.unit, { color: colors.textMuted }]}>kg</Text>
-          </View>
-          {showGhostWeight && (
-            <Text style={[styles.ghost, { color: colors.textMuted }]}>↑{ghost.weight}</Text>
-          )}
-        </View>
-
-        {/* Reps + ghost */}
-        <View style={styles.fieldCol}>
-          <View style={styles.fieldRow}>
-            <TextInput
-              ref={repsRef}
-              style={[styles.numInput, styles.repsInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]}
-              defaultValue={set.reps != null ? String(set.reps) : ''}
-              onEndEditing={e => handleReps(e.nativeEvent.text)}
-              keyboardType="number-pad"
-              placeholder="—"
-              placeholderTextColor={colors.textMuted}
-              selectTextOnFocus
-              returnKeyType="done"
-              onSubmitEditing={() => nextRef?.current?.focus()}
-            />
-            <Text style={[styles.unit, { color: colors.textMuted }]}>×</Text>
-          </View>
-          {showGhostReps && (
-            <Text style={[styles.ghost, { color: colors.textMuted }]}>↑{ghost.reps}</Text>
-          )}
-        </View>
-
-        <TouchableOpacity
+        <Animated.View
           style={[
-            styles.doneBtn,
-            { backgroundColor: set.completed ? colors.success : 'transparent', borderColor: set.completed ? colors.success : colors.border },
+            styles.slide,
+            { backgroundColor: set.completed ? colors.success + '12' : colors.surface },
+            rowStyle,
           ]}
-          onPress={toggleComplete}
-          hitSlop={8}
         >
-          <Ionicons
-            name={set.completed ? 'checkmark' : 'checkmark-outline'}
-            size={18}
-            color={set.completed ? '#fff' : colors.textMuted}
-          />
-        </TouchableOpacity>
+          {/* ── Main row ── */}
+          <View style={styles.mainRow}>
+            {/* Index */}
+            <Text style={[styles.idx, { color: colors.textMuted }]}>{index + 1}</Text>
 
-        <TouchableOpacity onPress={confirmDelete} hitSlop={8} style={styles.deleteBtn}>
-          <Ionicons name="trash-outline" size={16} color={colors.textMuted} />
-        </TouchableOpacity>
-      </View>
+            {/* Type badge — tap to cycle */}
+            <TouchableOpacity
+              style={[styles.typeBadge, { backgroundColor: typeColor + '1A', borderColor: typeColor + '60' }]}
+              onPress={cycleType}
+              hitSlop={8}
+            >
+              <Text style={[styles.typeTxt, { color: typeColor }]}>{TYPE_LABELS[set.setType]}</Text>
+            </TouchableOpacity>
 
-      {/* ── Detail row : RPE / RIR / Tempo ── */}
-      <View style={styles.detailRow}>
-        <View style={styles.detailField}>
-          <Text style={[styles.detailLabel, { color: colors.textMuted }]}>RPE</Text>
-          <TextInput
-            style={[styles.detailInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]}
-            defaultValue={set.rpe != null ? String(set.rpe) : ''}
-            onEndEditing={e => handleRpe(e.nativeEvent.text)}
-            keyboardType="decimal-pad"
-            placeholder="—"
-            placeholderTextColor={colors.textMuted}
-            selectTextOnFocus
-          />
-        </View>
+            {/* Weight */}
+            <View style={styles.numBlock}>
+              <View style={styles.numInner}>
+                <TextInput
+                  ref={weightRef}
+                  style={[styles.bigNum, { color: numColor, backgroundColor: colors.background }]}
+                  defaultValue={set.weight > 0 ? String(set.weight) : ''}
+                  onEndEditing={e => handleWeight(e.nativeEvent.text)}
+                  keyboardType="decimal-pad"
+                  placeholder="—"
+                  placeholderTextColor={colors.textMuted}
+                  selectTextOnFocus
+                  returnKeyType="next"
+                  onSubmitEditing={() => repsRef.current?.focus()}
+                />
+                <Text style={[styles.unit, { color: colors.textMuted }]}>kg</Text>
+              </View>
+              {showGhostWeight && (
+                <Text style={[styles.ghost, { color: colors.accent }]}>↑ {ghost!.weight}</Text>
+              )}
+            </View>
 
-        <View style={styles.detailSep} />
+            {/* Reps */}
+            <View style={styles.numBlock}>
+              <View style={styles.numInner}>
+                <TextInput
+                  ref={repsRef}
+                  style={[styles.bigNum, styles.repsNum, { color: numColor, backgroundColor: colors.background }]}
+                  defaultValue={set.reps != null ? String(set.reps) : ''}
+                  onEndEditing={e => handleReps(e.nativeEvent.text)}
+                  keyboardType="number-pad"
+                  placeholder="—"
+                  placeholderTextColor={colors.textMuted}
+                  selectTextOnFocus
+                  returnKeyType="done"
+                  onSubmitEditing={() => nextRef?.current?.focus()}
+                />
+                <Text style={[styles.unit, { color: colors.textMuted }]}>×</Text>
+              </View>
+              {showGhostReps && (
+                <Text style={[styles.ghost, { color: colors.accent }]}>↑ {ghost!.reps}</Text>
+              )}
+            </View>
 
-        <View style={styles.detailField}>
-          <Text style={[styles.detailLabel, { color: colors.textMuted }]}>RIR</Text>
-          <TextInput
-            style={[styles.detailInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]}
-            defaultValue={set.rir != null ? String(set.rir) : ''}
-            onEndEditing={e => handleRir(e.nativeEvent.text)}
-            keyboardType="number-pad"
-            placeholder="—"
-            placeholderTextColor={colors.textMuted}
-            selectTextOnFocus
-          />
-        </View>
+            {/* Complete button */}
+            <TouchableOpacity
+              style={[
+                styles.doneBtn,
+                {
+                  backgroundColor: set.completed ? colors.success : 'transparent',
+                  borderColor: set.completed ? colors.success : colors.border,
+                },
+              ]}
+              onPress={toggleComplete}
+              hitSlop={8}
+            >
+              <Ionicons
+                name={set.completed ? 'checkmark' : 'ellipse-outline'}
+                size={20}
+                color={set.completed ? '#fff' : colors.border}
+              />
+            </TouchableOpacity>
+          </View>
 
-        <View style={styles.detailSep} />
-
-        <TouchableOpacity
-          style={[styles.tempoChip, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={openTempoEditor}
-          hitSlop={8}
-        >
-          <Ionicons name="timer-outline" size={11} color={colors.textMuted} />
-          <Text style={[styles.tempoChipText, { color: tempoStr === '—' ? colors.textMuted : colors.text }]}>
-            {tempoStr}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* ── Tempo inline editor ── */}
-      {editingTempo && (
-        <View style={[styles.tempoEditorRow, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
-          <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Ecc</Text>
-          <TextInput style={[styles.tempoInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]} value={te} onChangeText={setTe} keyboardType="number-pad" maxLength={2} selectTextOnFocus />
-          <Text style={[styles.tempoDash, { color: colors.textMuted }]}>-</Text>
-          <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Bot</Text>
-          <TextInput style={[styles.tempoInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]} value={tpb} onChangeText={setTpb} keyboardType="number-pad" maxLength={2} selectTextOnFocus />
-          <Text style={[styles.tempoDash, { color: colors.textMuted }]}>-</Text>
-          <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Con</Text>
-          <TextInput style={[styles.tempoInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]} value={tc} onChangeText={setTc} placeholder="X" placeholderTextColor={colors.textMuted} maxLength={2} selectTextOnFocus />
-          <Text style={[styles.tempoDash, { color: colors.textMuted }]}>-</Text>
-          <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Top</Text>
-          <TextInput style={[styles.tempoInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]} value={tpt} onChangeText={setTpt} keyboardType="number-pad" maxLength={2} selectTextOnFocus />
-          <TouchableOpacity style={[styles.tempoConfirm, { backgroundColor: colors.accent }]} onPress={commitTempo}>
-            <Ionicons name="checkmark" size={14} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      )}
+          {/* ── Detail row : RPE / RIR / Tempo ── */}
+          {!editingTempo ? (
+            <View style={styles.detailRow}>
+              <View style={[styles.detailChip, { borderColor: colors.border, backgroundColor: colors.background }]}>
+                <Text style={[styles.detailLbl, { color: colors.textMuted }]}>RPE</Text>
+                <TextInput
+                  style={[styles.detailNum, { color: colors.text }]}
+                  defaultValue={set.rpe != null ? String(set.rpe) : ''}
+                  onEndEditing={e => handleRpe(e.nativeEvent.text)}
+                  keyboardType="decimal-pad"
+                  placeholder="—"
+                  placeholderTextColor={colors.textMuted}
+                  selectTextOnFocus
+                />
+              </View>
+              <View style={[styles.detailChip, { borderColor: colors.border, backgroundColor: colors.background }]}>
+                <Text style={[styles.detailLbl, { color: colors.textMuted }]}>RIR</Text>
+                <TextInput
+                  style={[styles.detailNum, { color: colors.text }]}
+                  defaultValue={set.rir != null ? String(set.rir) : ''}
+                  onEndEditing={e => handleRir(e.nativeEvent.text)}
+                  keyboardType="number-pad"
+                  placeholder="—"
+                  placeholderTextColor={colors.textMuted}
+                  selectTextOnFocus
+                />
+              </View>
+              <TouchableOpacity
+                style={[styles.tempoChip, { borderColor: colors.border, backgroundColor: colors.background }]}
+                onPress={openTempoEditor}
+                hitSlop={8}
+              >
+                <Ionicons name="timer-outline" size={11} color={colors.textMuted} />
+                <Text style={[styles.tempoChipTxt, { color: tempoStr === '—' ? colors.textMuted : colors.accent }]}>
+                  {tempoStr}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={[styles.tempoEditor, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
+              {(['Ecc', 'Bas', 'Con', 'Haut'] as const).map((lbl, i) => {
+                const vals = [te, tpb, tc, tpt];
+                const setters = [setTe, setTpb, setTc, setTpt];
+                return (
+                  <React.Fragment key={lbl}>
+                    {i > 0 && <Text style={[styles.tempoDash, { color: colors.textMuted }]}>-</Text>}
+                    <Text style={[styles.tempoEditorLbl, { color: colors.textMuted }]}>{lbl}</Text>
+                    <TextInput
+                      style={[styles.tempoInput, { color: colors.text, borderColor: colors.border }]}
+                      value={vals[i]}
+                      onChangeText={setters[i]}
+                      keyboardType={lbl === 'Con' ? 'default' : 'number-pad'}
+                      placeholder={lbl === 'Con' ? 'X' : '0'}
+                      placeholderTextColor={colors.textMuted}
+                      maxLength={2}
+                      selectTextOnFocus
+                    />
+                  </React.Fragment>
+                );
+              })}
+              <TouchableOpacity style={[styles.tempoOk, { backgroundColor: colors.accent }]} onPress={commitTempo}>
+                <Ionicons name="checkmark" size={14} color="#000" />
+              </TouchableOpacity>
+            </View>
+          )}
         </Animated.View>
       </GestureDetector>
     </View>
@@ -313,114 +322,137 @@ function SetRow({ set, index, ghost, onCompleted, nextRef }: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrapper: { borderBottomWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
-  deleteZone: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: DELETE_WIDTH,
-    justifyContent: 'center',
-    alignItems: 'center',
+  wrapper: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
   },
+  deleteReveal: {
+    position: 'absolute',
+    right: 0, top: 0, bottom: 0,
+    width: DELETE_WIDTH,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  deleteRevealText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+
+  slide: { /* translating layer */ },
+
   mainRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 4,
     gap: 8,
   },
-  index: { width: 18, fontSize: 13, fontWeight: '600', textAlign: 'center' },
+
+  idx: { width: 18, fontSize: 13, fontWeight: '700', textAlign: 'center' },
+
   typeBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    minWidth: 72,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 8,
-    borderWidth: 1,
-    minWidth: 56,
+    borderWidth: 1.5,
     alignItems: 'center',
   },
-  typeText: { fontSize: 11, fontWeight: '700' },
-  fieldCol: { alignItems: 'center', gap: 2 },
-  fieldRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  numInput: {
-    width: 56,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    fontSize: 15,
-    fontWeight: '600',
+  typeTxt: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+
+  numBlock: { flex: 1, alignItems: 'center', gap: 3 },
+  numInner: { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
+  bigNum: {
+    fontSize: 22,
+    fontWeight: '800',
     textAlign: 'center',
+    minWidth: 54,
+    paddingHorizontal: 6,
+    paddingVertical: 5,
+    borderRadius: 8,
+    fontVariant: ['tabular-nums'],
   },
-  repsInput: { width: 48 },
-  unit: { fontSize: 12, fontWeight: '500' },
-  ghost: { fontSize: 10, fontStyle: 'italic', letterSpacing: 0.2 },
+  repsNum: { minWidth: 40 },
+  unit: { fontSize: 13, fontWeight: '600' },
+  ghost: {
+    fontSize: 11,
+    fontVariant: ['tabular-nums'],
+    letterSpacing: 0.3,
+    opacity: 0.65,
+  },
+
   doneBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1.5,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  deleteBtn: { padding: 4 },
 
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 38,
-    paddingTop: 4,
-    paddingBottom: 8,
-    gap: 10,
+    paddingLeft: 42,
+    paddingRight: 14,
+    paddingBottom: 10,
+    paddingTop: 2,
+    gap: 6,
   },
-  detailField: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  detailLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.3 },
-  detailInput: {
-    width: 38,
-    borderRadius: 6,
+  detailChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 8,
     borderWidth: 1,
-    paddingHorizontal: 5,
-    paddingVertical: 3,
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center',
   },
-  detailSep: { width: StyleSheet.hairlineWidth, height: 14, backgroundColor: '#9CA3AF' },
+  detailLbl: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  detailNum: {
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    minWidth: 26,
+    padding: 0,
+    fontVariant: ['tabular-nums'],
+  },
   tempoChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 8,
     borderWidth: 1,
   },
-  tempoChipText: { fontSize: 12, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  tempoChipTxt: { fontSize: 11, fontWeight: '700', fontVariant: ['tabular-nums'] },
 
-  tempoEditorRow: {
+  tempoEditor: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 38,
+    paddingHorizontal: 14,
     paddingVertical: 8,
-    gap: 6,
+    gap: 5,
     borderTopWidth: StyleSheet.hairlineWidth,
+    flexWrap: 'wrap',
   },
+  tempoEditorLbl: { fontSize: 10, fontWeight: '700' },
   tempoInput: {
     width: 32,
     borderRadius: 6,
     borderWidth: 1,
     paddingHorizontal: 4,
-    paddingVertical: 3,
+    paddingVertical: 4,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     textAlign: 'center',
   },
   tempoDash: { fontSize: 13, fontWeight: '600' },
-  tempoConfirm: {
-    marginLeft: 6,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+  tempoOk: {
+    marginLeft: 4,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },

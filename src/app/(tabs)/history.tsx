@@ -5,6 +5,7 @@ import { useSessions } from '@/hooks/useSessions';
 import { useWeeklyVolume } from '@/hooks/useWeeklyVolume';
 import SessionCard from '@/features/history/SessionCard';
 import BodyMap from '@/features/stats/BodyMap';
+import FrequencyHeatmap from '@/features/stats/FrequencyHeatmap';
 
 const GROUP_FR: Record<string, string> = {
   chest: 'Pecto',
@@ -105,7 +106,12 @@ export default function HistoryScreen() {
       keyExtractor={item => item.id}
       renderItem={({ item }) => <SessionCard session={item} />}
       contentContainerStyle={styles.content}
-      ListHeaderComponent={<WeeklyVolume />}
+      ListHeaderComponent={
+        <>
+          <WeeklyVolume />
+          <FrequencyHeatmap />
+        </>
+      }
       ListEmptyComponent={
         <View style={styles.empty}>
           <Ionicons name="time-outline" size={48} color={colors.border} />

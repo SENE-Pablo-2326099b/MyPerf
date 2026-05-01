@@ -1,6 +1,6 @@
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { seedDatabase } from '@/db/seed';
+import { clearDatabase, seedDatabase } from '@/db/seed';
 import { useTheme } from '@/theme/ThemeProvider';
 import type { ThemeSetting } from '@/theme/themes';
 
@@ -15,15 +15,32 @@ const THEME_OPTIONS: Array<{ label: string; sub: string; value: ThemeSetting; ic
 function handleSeed() {
   Alert.alert(
     'Insérer les données de test',
-    '18 exercices · 3 templates · 11 séances. À faire uniquement sur une base vide.',
+    '18 exercices · 3 templates · 12 séances · 1 macrocycle · 2 mésocycles · 8 microcycles.\n\nFaire uniquement sur une base vide (utilise "Effacer" d\'abord).',
     [
       { text: 'Annuler', style: 'cancel' },
       {
         text: 'Insérer',
-        style: 'destructive',
         onPress: () =>
           seedDatabase()
             .then(() => Alert.alert('OK', 'Données insérées. Redémarre l\'app.'))
+            .catch((e: Error) => Alert.alert('Erreur', e.message)),
+      },
+    ],
+  );
+}
+
+function handleClear() {
+  Alert.alert(
+    'Effacer toutes les données',
+    'Cette action supprime définitivement exercices, séances, templates, macrocycles et tout le reste. Irréversible.',
+    [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Tout effacer',
+        style: 'destructive',
+        onPress: () =>
+          clearDatabase()
+            .then(() => Alert.alert('OK', 'Base de données vidée. Redémarre l\'app.'))
             .catch((e: Error) => Alert.alert('Erreur', e.message)),
       },
     ],
@@ -85,17 +102,34 @@ export default function SettingsScreen() {
           <TouchableOpacity
             style={[styles.row, {
               backgroundColor: colors.surface,
-              borderColor: colors.danger + '44',
+              borderColor: colors.accent + '44',
               borderRadius: radius.md,
             }]}
             onPress={handleSeed}
             activeOpacity={0.7}
           >
-            <Ionicons name="flask-outline" size={18} color={colors.danger} />
+            <Ionicons name="flask-outline" size={18} color={colors.accent} />
             <View style={styles.rowTexts}>
               <Text style={[styles.rowLabel, { color: colors.text }]}>Insérer données de test</Text>
               <Text style={[styles.rowSub, { color: colors.textMuted }]}>
-                18 exercices · 3 templates · 11 séances
+                18 exos · 3 templates · 12 séances · macrocycle · mésocycles
+              </Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.row, {
+              backgroundColor: colors.surface,
+              borderColor: colors.danger + '44',
+              borderRadius: radius.md,
+            }]}
+            onPress={handleClear}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="trash-outline" size={18} color={colors.danger} />
+            <View style={styles.rowTexts}>
+              <Text style={[styles.rowLabel, { color: colors.danger }]}>Effacer toutes les données</Text>
+              <Text style={[styles.rowSub, { color: colors.textMuted }]}>
+                Supprime exercices, séances, planification — irréversible
               </Text>
             </View>
           </TouchableOpacity>

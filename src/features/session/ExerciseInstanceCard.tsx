@@ -16,20 +16,20 @@ import type ExerciseInstance from '@/db/models/ExerciseInstance';
 import type Exercise from '@/db/models/Exercise';
 import type { Intention } from '@/db/models/ExerciseInstance';
 
-const INTENTIONS: Array<{ value: Intention; label: string }> = [
-  { value: 'power', label: 'Puissance' },
-  { value: 'strength', label: 'Force' },
-  { value: 'hypertrophy', label: 'Hypertrophie' },
-  { value: 'endurance', label: 'Endurance' },
-  { value: 'metabolic', label: 'Métabolique' },
+const INTENTIONS: Array<{ value: Intention; label: string; icon: string }> = [
+  { value: 'power',       label: 'Puissance',    icon: 'flash' },
+  { value: 'strength',    label: 'Force',         icon: 'barbell' },
+  { value: 'hypertrophy', label: 'Hypertrophie',  icon: 'body' },
+  { value: 'endurance',   label: 'Endurance',     icon: 'pulse' },
+  { value: 'metabolic',   label: 'Métabolique',   icon: 'flame' },
 ];
 
 const INTENTION_COLORS: Record<Intention, string> = {
-  power: '#F59E0B',
-  strength: '#EF4444',
+  power:       '#F59E0B',
+  strength:    '#EF4444',
   hypertrophy: '#3B82F6',
-  endurance: '#10B981',
-  metabolic: '#8B5CF6',
+  endurance:   '#10B981',
+  metabolic:   '#8B5CF6',
 };
 
 interface Props {
@@ -38,7 +38,8 @@ interface Props {
 }
 
 function ExerciseInstanceCard({ instance, onSetComplete }: Props) {
-  const { theme: { colors } } = useTheme();
+  const { theme: { colors, radius, mode } } = useTheme();
+  const isNeo = mode === 'neo';
   const sets = useWorkingSets(instance.id);
   const [exercise, setExercise] = useState<Exercise | null>(null);
   const [showIntentionPicker, setShowIntentionPicker] = useState(false);
@@ -48,12 +49,10 @@ function ExerciseInstanceCard({ instance, onSetComplete }: Props) {
     return () => sub.unsubscribe();
   }, [instance.id]);
 
-  // Ghost data — last session's sets for this exercise
   const exerciseId = instance.exercise.id;
   const sessionId = instance.session.id;
   const lastSets = useLastSets(exerciseId, sessionId);
 
-  // Tonnage + estimated 1RM from completed working sets
   const stats = useMemo(() => {
     const working = sets.filter(s => s.completed && s.setType !== 'warmup');
     const tonnage = working.reduce((sum, s) => sum + s.weight * (s.reps ?? 0), 0);
@@ -72,7 +71,7 @@ function ExerciseInstanceCard({ instance, onSetComplete }: Props) {
   const handleRemove = useCallback(() => {
     Alert.alert(
       'Retirer l\'exercice ?',
-      `Retirer "${exercise?.name ?? ''}" et toutes ses séries ?`,
+      `"${exercise?.name ?? ''}" et toutes ses séries seront retirés.`,
       [
         { text: 'Annuler', style: 'cancel' },
         { text: 'Retirer', style: 'destructive', onPress: () => removeExercise(instance) },
@@ -82,28 +81,36 @@ function ExerciseInstanceCard({ instance, onSetComplete }: Props) {
 
   const intentionColor = INTENTION_COLORS[instance.intention] ?? colors.accent;
   const completedCount = sets.filter(s => s.completed).length;
+  const allDone = sets.length > 0 && completedCount === sets.length;
+  const intentionLabel = INTENTIONS.find(i => i.value === instance.intention)?.label ?? instance.intention;
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      {/* Header */}
-      <View style={[styles.cardHeader, { borderBottomColor: colors.border }]}>
+    <View style={[
+      styles.card,
+      {
+        backgroundColor: colors.surface,
+        borderColor: colors.border,
+        borderLeftColor: intentionColor,
+      },
+    ]}>
+      {/* ── Card header ── */}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
-          <Text style={[styles.exerciseName, { color: colors.text }]} numberOfLines={1}>
+          {/* Exercise name */}
+          <Text style={[styles.exoName, { color: colors.text }]} numberOfLines={1}>
             {exercise?.name ?? '…'}
           </Text>
+
+          {/* Intention badge + set count */}
           <View style={styles.headerMeta}>
-            {/* Intention chip */}
             <TouchableOpacity
-              style={[styles.intentionBadge, { backgroundColor: intentionColor + '22', borderColor: intentionColor + '55' }]}
+              style={[styles.intentionBadge, { backgroundColor: intentionColor + '20', borderColor: intentionColor + '60' }]}
               onPress={() => setShowIntentionPicker(v => !v)}
               hitSlop={8}
             >
-              <Text style={[styles.intentionText, { color: intentionColor }]}>
-                {INTENTIONS.find(i => i.value === instance.intention)?.label ?? instance.intention}
-              </Text>
-              <Ionicons name="chevron-down" size={10} color={intentionColor} />
+              <Text style={[styles.intentionTxt, { color: intentionColor }]}>{intentionLabel}</Text>
+              <Ionicons name={showIntentionPicker ? 'chevron-up' : 'chevron-down'} size={10} color={intentionColor} />
             </TouchableOpacity>
-
             {sets.length > 0 && (
               <Text style={[styles.setCount, { color: colors.textMuted }]}>
                 {completedCount}/{sets.length} série{sets.length > 1 ? 's' : ''}
@@ -111,24 +118,24 @@ function ExerciseInstanceCard({ instance, onSetComplete }: Props) {
             )}
           </View>
 
-          {/* Tonnage + e1RM */}
+          {/* Stats chips */}
           {(stats.tonnage > 0 || stats.e1RM > 0) && (
             <View style={styles.statsRow}>
               {stats.tonnage > 0 && (
-                <View style={[styles.statChip, { backgroundColor: colors.accent + '14' }]}>
+                <View style={[styles.statChip, { backgroundColor: colors.accent + '15', borderColor: colors.accent + '30' }]}>
                   <Ionicons name="barbell-outline" size={10} color={colors.accent} />
-                  <Text style={[styles.statText, { color: colors.accent }]}>
+                  <Text style={[styles.statTxt, { color: colors.accent }]}>
                     {stats.tonnage >= 1000
-                      ? `${(stats.tonnage / 1000).toFixed(1)}t`
-                      : `${stats.tonnage}kg`}
+                      ? `${(stats.tonnage / 1000).toFixed(1)} t`
+                      : `${Math.round(stats.tonnage)} kg`}
                   </Text>
                 </View>
               )}
               {stats.e1RM > 0 && (
-                <View style={[styles.statChip, { backgroundColor: colors.success + '14' }]}>
+                <View style={[styles.statChip, { backgroundColor: colors.success + '15', borderColor: colors.success + '30' }]}>
                   <Ionicons name="trending-up-outline" size={10} color={colors.success} />
-                  <Text style={[styles.statText, { color: colors.success }]}>
-                    e1RM {Math.round(stats.e1RM)}kg
+                  <Text style={[styles.statTxt, { color: colors.success }]}>
+                    e1RM {Math.round(stats.e1RM)} kg
                   </Text>
                 </View>
               )}
@@ -136,14 +143,30 @@ function ExerciseInstanceCard({ instance, onSetComplete }: Props) {
           )}
         </View>
 
-        <TouchableOpacity onPress={handleRemove} hitSlop={12} style={styles.removeBtn}>
-          <Ionicons name="close-circle" size={20} color={colors.textMuted} />
-        </TouchableOpacity>
+        {/* Right: completion pill + remove */}
+        <View style={styles.headerRight}>
+          {sets.length > 0 && (
+            <View style={[
+              styles.progressPill,
+              {
+                backgroundColor: allDone ? colors.success + '20' : colors.background,
+                borderColor: allDone ? colors.success : colors.border,
+              },
+            ]}>
+              <Text style={[styles.progressTxt, { color: allDone ? colors.success : colors.textMuted }]}>
+                {completedCount}/{sets.length}
+              </Text>
+            </View>
+          )}
+          <TouchableOpacity onPress={handleRemove} hitSlop={12}>
+            <Ionicons name="close-circle" size={22} color={colors.textMuted} />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Intention picker */}
+      {/* ── Intention picker ── */}
       {showIntentionPicker && (
-        <View style={[styles.intentionPicker, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
+        <View style={[styles.intentionPicker, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
           <View style={styles.intentionRow}>
             {INTENTIONS.map(opt => {
               const active = instance.intention === opt.value;
@@ -153,15 +176,16 @@ function ExerciseInstanceCard({ instance, onSetComplete }: Props) {
                   key={opt.value}
                   style={[
                     styles.intentionOption,
-                    { backgroundColor: active ? c : colors.surface, borderColor: active ? c : colors.border },
+                    {
+                      backgroundColor: active ? c : colors.surface,
+                      borderColor: active ? c : colors.border,
+                    },
                   ]}
-                  onPress={() => {
-                    updateIntention(instance, opt.value);
-                    setShowIntentionPicker(false);
-                  }}
-                  activeOpacity={0.7}
+                  onPress={() => { updateIntention(instance, opt.value); setShowIntentionPicker(false); }}
+                  activeOpacity={0.75}
                 >
-                  <Text style={[styles.intentionOptionText, { color: active ? '#fff' : colors.textMuted }]}>
+                  <Ionicons name={opt.icon as any} size={12} color={active ? '#fff' : c} />
+                  <Text style={[styles.intentionOptTxt, { color: active ? '#fff' : colors.textMuted }]}>
                     {opt.label}
                   </Text>
                 </TouchableOpacity>
@@ -171,35 +195,38 @@ function ExerciseInstanceCard({ instance, onSetComplete }: Props) {
         </View>
       )}
 
-      {/* Column headers */}
+      {/* ── Column headers ── */}
       {sets.length > 0 && (
         <View style={[styles.colHeaders, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.colHeader, { color: colors.textMuted, width: 18 }]}>#</Text>
-          <Text style={[styles.colHeader, { color: colors.textMuted, width: 64 }]}>Type</Text>
-          <Text style={[styles.colHeader, { color: colors.textMuted, width: 72 }]}>Poids</Text>
-          <Text style={[styles.colHeader, { color: colors.textMuted, width: 60 }]}>Reps</Text>
+          <Text style={[styles.colHdr, { color: colors.textMuted, width: 18 }]}>#</Text>
+          <Text style={[styles.colHdr, { color: colors.textMuted, width: 80 }]}>TYPE</Text>
+          <Text style={[styles.colHdr, { color: colors.textMuted, flex: 1, textAlign: 'center' }]}>POIDS</Text>
+          <Text style={[styles.colHdr, { color: colors.textMuted, flex: 1, textAlign: 'center' }]}>REPS</Text>
+          <View style={{ width: 42 }} />
         </View>
       )}
 
-      {/* Sets */}
-      {sets.map((set, idx) => (
+      {/* ── Set rows ── */}
+      {sets.map((s, idx) => (
         <SetRow
-          key={set.id}
-          set={set}
+          key={s.id}
+          set={s}
           index={idx}
           ghost={lastSets[idx]}
           onCompleted={() => onSetComplete?.(instance.intention)}
         />
       ))}
 
-      {/* Add set button */}
+      {/* ── Add set ── */}
       <TouchableOpacity
-        style={[styles.addSetBtn, { borderColor: colors.border }]}
+        style={[styles.addBtn, { borderTopColor: colors.border }]}
         onPress={handleAddSet}
         activeOpacity={0.7}
       >
-        <Ionicons name="add" size={16} color={colors.accent} />
-        <Text style={[styles.addSetText, { color: colors.accent }]}>Ajouter une série</Text>
+        <View style={[styles.addIconWrap, { backgroundColor: colors.accent + '18', borderColor: colors.accent + '40' }]}>
+          <Ionicons name="add" size={14} color={colors.accent} />
+        </View>
+        <Text style={[styles.addTxt, { color: colors.accent }]}>Ajouter une série</Text>
       </TouchableOpacity>
     </View>
   );
@@ -209,74 +236,97 @@ const styles = StyleSheet.create({
   card: {
     marginHorizontal: 16,
     marginBottom: 12,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
+    borderLeftWidth: 4,
     overflow: 'hidden',
   },
-  cardHeader: {
+  header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 13,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 8,
   },
-  headerLeft: { flex: 1, gap: 6 },
-  exerciseName: { fontSize: 16, fontWeight: '700' },
+  headerLeft: { flex: 1, gap: 7 },
+  exoName: { fontSize: 17, fontWeight: '800', letterSpacing: -0.3 },
   headerMeta: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   intentionBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     borderRadius: 8,
     borderWidth: 1,
   },
-  intentionText: { fontSize: 11, fontWeight: '700' },
-  setCount: { fontSize: 12 },
+  intentionTxt: { fontSize: 11, fontWeight: '800' },
+  setCount: { fontSize: 12, fontWeight: '500' },
   statsRow: { flexDirection: 'row', gap: 6 },
   statChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
   },
-  statText: { fontSize: 11, fontWeight: '600' },
-  removeBtn: { marginTop: 2 },
+  statTxt: { fontSize: 11, fontWeight: '700' },
+  headerRight: { alignItems: 'flex-end', gap: 8, paddingTop: 2 },
+  progressPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  progressTxt: { fontSize: 13, fontWeight: '800', fontVariant: ['tabular-nums'] },
+
   intentionPicker: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   intentionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   intentionOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1.5,
   },
-  intentionOptionText: { fontSize: 12, fontWeight: '600' },
+  intentionOptTxt: { fontSize: 12, fontWeight: '700' },
+
   colHeaders: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 6,
     gap: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  colHeader: { fontSize: 10, fontWeight: '600', letterSpacing: 0.5 },
-  addSetBtn: {
+  colHdr: { fontSize: 10, fontWeight: '700', letterSpacing: 0.8 },
+
+  addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
+    gap: 8,
+    paddingVertical: 13,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  addSetText: { fontSize: 14, fontWeight: '600' },
+  addIconWrap: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addTxt: { fontSize: 14, fontWeight: '700' },
 });
 
 export default React.memo(ExerciseInstanceCard);

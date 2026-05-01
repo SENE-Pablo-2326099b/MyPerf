@@ -1,6 +1,8 @@
 # MyPerf
 
-Tracker d'entraînements d'hypertrophie — offline-first, niveau de détail maximal (tempo, RPE/RIR, intention par exercice, sets avancés). Thème néo-futuriste par défaut.
+Tracker d'entraînement offline-first pour l'hypertrophie — niveau de détail maximal : tempo, RPE/RIR, intention par exercice, types de séries avancés, periodisation complète par blocs.
+
+> **Guide utilisateur complet** → [`GUIDE.md`](./GUIDE.md)
 
 ---
 
@@ -137,34 +139,42 @@ Lie un template à une date. Supporte les block types : accumulation / hypertrop
 
 ### Séance active
 - Chrono live depuis `started_at`
-- Ajout d'exercices via picker (recherche intégrée)
-- Par exercice : intention configurable, tonnage + e1RM estimé live
-- Par série : type (warmup/working/drop/rest_pause/myoreps), poids, reps, RPE, RIR, tempo complet
-- Données du **dernier passage** affichées en ghost sous chaque champ
-- **Timer de repos automatique** déclenché à chaque complétion de série (durée selon l'intention)
-- Fin de séance avec **notes libres** enregistrées sur la session
+- Ajout d'exercices via picker filtrable (muscle, équipement, recherche) avec indicateurs couleur par groupe
+- Par exercice : intention configurable (power/strength/hypertrophy/endurance/metabolic), tonnage + e1RM estimé live, border colorée, pill de progression
+- Par série : type (warmup/working/drop/rest_pause/myoreps), poids, reps, RPE, RIR, tempo complet (4 phases)
+- Données du **dernier passage** (ghost) affichées sous chaque champ
+- **Swipe-to-delete** sur chaque ligne de série
+- **Timer de repos automatique** déclenché à la complétion (durée selon l'intention, ajustable ±30s, picker wheel pour durée custom)
+- FAB pill "+ Exercice"
+- Fin de séance avec **notes libres**
 
 ### Planning
 - Calendrier semaine avec navigation ← →
-- Dots indicateurs : bleu = planifié, vert = réalisé
-- Templates PPL configurables (exercices, ordre, paramètres)
-- Démarrage depuis template : pre-populate les séries avec le dernier poids utilisé
+- Indicateurs planifié (bleu) / réalisé (vert) par jour
+- Templates réutilisables avec exercices, intentions, paramètres
+- Démarrage depuis template : pré-rempli avec le dernier poids utilisé
+- **Macrocycles** (plan macro) + **mésocycles** par bloc (accumulation/hypertrophie/transmutation/réalisation/deload/puissance)
+- Génération automatique des séances planifiées depuis le mésocycle
+- Bannière TODAY avec semaine en cours et type de bloc
 
 ### Historique
-- Liste de toutes les séances terminées
-- Volume hebdomadaire par groupe musculaire (barres visuelles)
-- Tonnage total et durée par séance
-- Notes de séance affichées
+- Volume hebdomadaire par groupe musculaire (barres avec seuils orange/rouge)
+- Body map SVG colorisée par intensité de travail
+- **Heatmap de fréquence** 4 semaines × 6 groupes musculaires
+- Liste séances terminées avec tonnage, durée, notes
+- Détail complet de chaque séance (type, poids, reps, RPE, RIR, tempo)
+- **Graphiques de progression** par exercice (poids max, e1RM, volume) avec détection PR et historique tabulaire
 
 ### Exercices
-- Catalogue avec filtre par muscle/équipement
-- Création/édition complète (muscles secondaires, prise, angle)
+- Catalogue avec filtres muscle/équipement
+- Création/édition complète : groupes secondaires, muscles spécifiques, prise, angle de travail, unilatéral
 
-### Thèmes
-- **Néo-futuriste** (défaut) : bleu-noir + cyan électrique `#00C6FF`
-- Sombre : gris classique
-- OLED : noir absolu (économie batterie)
-- Clair
+### UI / Thèmes
+- **Tab bar custom** avec bouton TODAY central surélevé
+- **Néo-futuriste** : bleu-noir profond `#06080F` + cyan électrique `#00C6FF`, radius angulaires
+- **Sombre** : gris classique
+- **OLED** : noir absolu (économie batterie)
+- **Clair**
 
 ---
 
@@ -232,18 +242,18 @@ Un seed complet est disponible pour tester toutes les fonctionnalités :
 
 - **18 exercices** couvrant tous les groupes musculaires
 - **3 templates PPL** (Push A / Pull A / Legs A)
-- **11 séances historiques** sur 4 semaines avec progression linéaire
-- **5 séances planifiées** pour la semaine en cours et la suivante
+- **12 séances historiques** sur 4 semaines avec progression linéaire + séance avancée (drop sets, myoreps, tempo)
+- **1 macrocycle** + **2 mésocycles** + **8 microcycles**
+- **6 séances planifiées** pour les semaines à venir
 
-**Activation** : Réglages → "Insérer données de test" (visible uniquement en mode DEV).
+**Activation** : Réglages → "Insérer données de test" (visible uniquement en mode DEV).  
+**Remise à zéro** : Réglages → "Effacer toutes les données" (mode DEV, irréversible).
 
 ---
 
 ## Prochains chantiers
 
-- [ ] Graphiques de progression par exercice (weight × date)
-- [ ] Swipe-to-delete sur les séries (react-native-gesture-handler Swipeable)
 - [ ] Réordonnancement des exercices en séance active (drag & drop)
-- [ ] Carte musculaire SVG (remplacer le placeholder BodyMap)
-- [ ] Timer de repos configurable par exercice (override du défaut par intention)
 - [ ] Export CSV / partage de séance
+- [ ] Notifications de rappel de séance planifiée
+- [ ] Comparaison de sessions (côte-à-côte)
