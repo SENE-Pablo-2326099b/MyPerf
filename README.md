@@ -25,18 +25,19 @@ Tracker d'entraînement offline-first pour l'hypertrophie — niveau de détail 
 src/
 ├── app/
 │   ├── (tabs)/
-│   │   ├── index.tsx          — Écran "Aujourd'hui" (session active ou démarrage)
-│   │   ├── planning.tsx       — Calendrier semaine + templates
-│   │   ├── history.tsx        — Historique des séances + volume 7j
-│   │   ├── exercises.tsx      — Catalogue d'exercices (CRUD)
-│   │   └── settings.tsx       — Thème + outils dev
+│   │   ├── index.tsx          — TODAY : séance active ou démarrage + badge readiness
+│   │   ├── planning.tsx       — Calendrier, templates, macrocycles, mésocycles
+│   │   ├── history.tsx        — LOG : volume MEV/MAV/MRV, PRs, forme, séances
+│   │   ├── exercises.tsx      — Catalogue d'exercices CRUD
+│   │   └── settings.tsx       — Thèmes + export + outils dev
+│   ├── body.tsx               — Page dédiée poids de corps & mensurations
 │   └── session/[id].tsx       — Détail d'une séance passée
 │
 ├── db/
 │   ├── database.ts            — Init WatermelonDB + patch New Architecture
-│   ├── schema.ts              — Schéma v3 (7 tables)
-│   ├── migrations.ts          — Migrations v1→v3
-│   ├── seed.ts                — Données de test (18 exos, 3 templates, 11 séances)
+│   ├── schema.ts              — Schéma v7 (9 tables)
+│   ├── migrations.ts          — Migrations v1→v7
+│   ├── seed.ts                — Données de test complètes
 │   └── models/
 │       ├── Exercise.ts
 │       ├── Session.ts
@@ -44,137 +45,132 @@ src/
 │       ├── WorkingSet.ts
 │       ├── WorkoutTemplate.ts
 │       ├── TemplateExercise.ts
-│       └── ScheduledSession.ts
+│       ├── ScheduledSession.ts
+│       ├── Macrocycle.ts
+│       ├── Mesocycle.ts
+│       ├── Microcycle.ts
+│       ├── BodyMetric.ts      — Poids, %, mensurations
+│       └── DailyReadiness.ts  — Sommeil, courbatures, stress, motivation
 │
 ├── features/
 │   ├── session/
-│   │   ├── ActiveSessionView.tsx   — Vue principale en-cours (chrono, exercices, fin)
-│   │   ├── ExerciseInstanceCard.tsx — Carte exercice + sets + tonnage + e1RM
-│   │   ├── SetRow.tsx              — Ligne série (poids, reps, RPE, RIR, tempo)
-│   │   ├── RestTimer.tsx           — Timer de repos flottant (auto-déclenché)
-│   │   ├── ExercisePicker.tsx      — Modal sélection exercice
-│   │   └── sessionActions.ts       — Mutations DB séance
-│   ├── planning/
-│   │   ├── TemplateEditor.tsx
-│   │   ├── ScheduleModal.tsx
-│   │   ├── templateActions.ts
-│   │   └── planningActions.ts
-│   ├── exercises/
-│   │   ├── ExerciseList.tsx
-│   │   ├── ExerciseForm.tsx
-│   │   └── exerciseData.ts         — Énumérations (équipements, muscles…)
+│   │   ├── ActiveSessionView.tsx   — Chrono, exercices, réorganisation, fin
+│   │   ├── ExerciseInstanceCard.tsx — Carte exercice + sets + stats + notes
+│   │   ├── SetRow.tsx              — Ligne série (22px, ghost, RPE, RIR, tempo, animation)
+│   │   ├── RestTimer.tsx           — Timer repos flottant + WheelPicker durée custom
+│   │   ├── ExercisePicker.tsx      — Modal exercice avec chips colorées par muscle
+│   │   └── sessionActions.ts       — Mutations DB + reorderExercises + saveAsTemplate
+│   ├── body/
+│   │   ├── BodyMetricModal.tsx     — Formulaire saisie poids/mensurations
+│   │   └── bodyActions.ts
+│   ├── readiness/
+│   │   ├── ReadinessCheckIn.tsx   — Formulaire 4 critères 1-5
+│   │   ├── ReadinessCard.tsx      — Timeline + ratio A:C + suggestion déload
+│   │   └── readinessActions.ts
+│   ├── export/
+│   │   └── exportActions.ts       — Export JSON complet via Share
+│   ├── planning/  …
+│   ├── exercises/ …
 │   ├── history/
-│   │   └── SessionCard.tsx         — Carte résumé séance (tonnage, durée, notes)
+│   │   └── SessionCard.tsx        — Carte séance avec animation FadeInDown
 │   └── stats/
-│       └── BodyMap.tsx             — Placeholder carte musculaire (à venir)
+│       ├── BodyMap.tsx
+│       ├── ProgressChart.tsx      — Graphique progression par exercice + PR
+│       ├── PRList.tsx             — Records personnels (réactif aux nouvelles séances)
+│       ├── FrequencyHeatmap.tsx   — 4 semaines × 6 groupes musculaires
+│       └── volumeLandmarks.ts     — Constantes MEV/MAV/MRV par groupe
 │
-├── hooks/                          — Observables WatermelonDB
-│   ├── useActiveSession.ts
-│   ├── useSessions.ts
-│   ├── useSessionExercises.ts
-│   ├── useWorkingSets.ts
-│   ├── useLastSets.ts              — "Dernier passage" par exercice
-│   ├── useWeeklyVolume.ts          — Séries par groupe musculaire (7j)
-│   ├── useExercises.ts
-│   ├── useWorkoutTemplates.ts
-│   ├── useTemplateExercises.ts
-│   └── useScheduledSessions.ts
+├── hooks/
+│   ├── useBodyMetrics.ts          — Observable body_metrics DESC
+│   ├── useDailyReadiness.ts       — Observable daily_readiness DESC
+│   ├── useTrainingLoad.ts         — Ratio Aiguë/Chronique (A:C)
+│   ├── usePRs.ts                  — Records par exercice (réactif)
+│   ├── useWeeklyVolume.ts
+│   ├── useMonthlyFrequency.ts
+│   └── … (autres hooks WatermelonDB)
+│
+├── components/
+│   ├── CustomTabBar.tsx           — Tab bar animée (spring press + indicateur actif)
+│   └── WheelPicker.tsx            — Roue de sélection numérique
 │
 ├── theme/
-│   ├── themes.ts                   — 4 thèmes : light / dark / oled / neo
-│   └── ThemeProvider.tsx           — Contexte + persistance
+│   ├── themes.ts                  — 4 thèmes premium : light/dark/oled/neo
+│   └── ThemeProvider.tsx
 │
 └── utils/
-    └── format.ts                   — Formatage durée, date, heure
+    └── format.ts
 ```
 
 ---
 
-## Modèle de données
+## Modèle de données (schéma v7)
 
-### exercises
-| Colonne | Type | Notes |
-|---|---|---|
-| name | string | — |
-| primary_muscle_group | string | chest / back / shoulders / arms / legs / core |
-| secondary_muscle_groups | string | JSON array |
-| specific_muscles | string | JSON array — pec_upper, lats, quads… |
-| equipment | string | barbell / dumbbell / cable / machine / bodyweight… |
-| exercise_type | string | compound / isolation |
-| is_unilateral | boolean | — |
-| grip | string? | pronation / supination / neutral / mixed |
-| working_angle | string? | flat / incline / overhead / low_pulley… |
+9 tables principales. Les 2 nouvelles tables de la v7 :
 
-### sessions
-| Colonne | Type | Notes |
-|---|---|---|
-| name | string? | Nom ou null (séance libre) |
-| started_at | number | Timestamp ms |
-| ended_at | number? | null si en cours |
-| notes | string? | Ajoutées à la fin de séance |
+### body_metrics
+Poids de corps et mensurations, saisie libre (aucune fréquence imposée).
+`recorded_at · weight_kg · body_fat_pct? · chest_cm? · waist_cm? · hips_cm? · left_arm_cm? · right_arm_cm? · left_thigh_cm? · right_thigh_cm? · notes?`
 
-### exercise_instances
-Lie une session à un exercice. Porte l'intention (power / strength / hypertrophy / endurance / metabolic), les plages de répétitions cibles, le RPE cible, le repos cible.
+### daily_readiness
+Évaluation quotidienne de la forme, saisie à la demande.
+`recorded_at · sleep_quality (1-5) · soreness (1-5) · stress_level (1-5) · motivation (1-5) · notes?`
 
-### working_sets
-| Colonne | Type | Notes |
-|---|---|---|
-| set_type | string | warmup / working / drop / rest_pause / myoreps |
-| weight | number | kg |
-| reps | number? | null si isométrique |
-| rpe / rir | number? | RPE 0-10, RIR 0-10 |
-| tempo_* | number | ecc-pauseBas-conc-pauseHaut. -1 = "X" (explosif) |
-| is_isometric | boolean | — |
-| completed | boolean | — |
+Score calculé : `(sommeil + (6−courbatures) + (6−stress) + motivation) / 4` → 1-5.
 
-### workout_templates + template_exercises
-Templates réutilisables avec exercices ordonnés et paramètres prédéfinis.
-
-### scheduled_sessions
-Lie un template à une date. Supporte les block types : accumulation / hypertrophy / transmutation / realization / deload / power.
+### Autres tables
+`exercises · sessions · exercise_instances · working_sets · workout_templates · template_exercises · scheduled_sessions · macrocycles · mesocycles · microcycles`
 
 ---
 
 ## Fonctionnalités implémentées
 
 ### Séance active
-- Chrono live depuis `started_at`
-- Ajout d'exercices via picker filtrable (muscle, équipement, recherche) avec indicateurs couleur par groupe
-- Par exercice : intention configurable (power/strength/hypertrophy/endurance/metabolic), tonnage + e1RM estimé live, border colorée, pill de progression
-- Par série : type (warmup/working/drop/rest_pause/myoreps), poids, reps, RPE, RIR, tempo complet (4 phases)
-- Données du **dernier passage** (ghost) affichées sous chaque champ
-- **Swipe-to-delete** sur chaque ligne de série
-- **Timer de repos automatique** déclenché à la complétion (durée selon l'intention, ajustable ±30s, picker wheel pour durée custom)
+- Chrono 32px live + nom de séance
+- Picker exercices filtrable (couleur par muscle) avec compteur résultats
+- Par exercice : intention configurable, border colorée, pill progression, tonnage + e1RM live, **notes** par exercice, **réorganisation ↑↓** (mode "Ordre")
+- Par série : grand format (22px), type cycable, ghost ↑ du dernier passage, RPE/RIR/tempo, complétion avec **animation de pop** + fond vert
+- Swipe-to-delete sur chaque série
+- Timer de repos auto (durée par intention, ±30s, **WheelPicker** pour durée custom)
 - FAB pill "+ Exercice"
-- Fin de séance avec **notes libres**
+- Fin de séance : notes libres + **"Sauvegarder comme template"** switch
 
-### Planning
-- Calendrier semaine avec navigation ← →
-- Indicateurs planifié (bleu) / réalisé (vert) par jour
-- Templates réutilisables avec exercices, intentions, paramètres
-- Démarrage depuis template : pré-rempli avec le dernier poids utilisé
-- **Macrocycles** (plan macro) + **mésocycles** par bloc (accumulation/hypertrophie/transmutation/réalisation/deload/puissance)
-- Génération automatique des séances planifiées depuis le mésocycle
-- Bannière TODAY avec semaine en cours et type de bloc
+### Statistiques avancées (LOG)
+- Volume 7j avec **landmarks MEV/MAV/MRV** codés couleur + repères visuels sur les barres
+- Body map SVG + heatmap fréquence 4 semaines
+- **Records personnels** par exercice (maxWeight + e1RM, réactifs aux nouvelles séances)
+- **Recherche** dans l'historique par nom/notes
+- Détail séance + **graphiques de progression** (poids/e1RM/volume) avec détection PR
 
-### Historique
-- Volume hebdomadaire par groupe musculaire (barres avec seuils orange/rouge)
-- Body map SVG colorisée par intensité de travail
-- **Heatmap de fréquence** 4 semaines × 6 groupes musculaires
-- Liste séances terminées avec tonnage, durée, notes
-- Détail complet de chaque séance (type, poids, reps, RPE, RIR, tempo)
-- **Graphiques de progression** par exercice (poids max, e1RM, volume) avec détection PR et historique tabulaire
+### Corps & Mensurations (page dédiée `/body`)
+- Saisie libre (aucune fréquence imposée) : poids + 7 mensurations + % MG + notes
+- Navigation de date libre dans le formulaire
+- Graphique de poids (16 entrées, pleine largeur)
+- Grille de mensurations avec deltas (sens positif/négatif adapté par mesure)
+- Historique complet avec swipe-to-delete
 
-### Exercices
-- Catalogue avec filtres muscle/équipement
-- Création/édition complète : groupes secondaires, muscles spécifiques, prise, angle de travail, unilatéral
+### Forme & Fatigue
+- Check-in quotidien : sommeil / courbatures / stress / motivation (1-5, couleurs contextuelles)
+- Score de forme automatique (1-5, vert/orange/rouge)
+- Badge compact sur TODAY (score si fait, lien si non fait)
+- Ratio Aiguë/Chronique (A:C) depuis les données d'entraînement réelles
+- Suggestion de déload si A:C > 1.3 ET forme < 3/5
 
-### UI / Thèmes
-- **Tab bar custom** avec bouton TODAY central surélevé
-- **Néo-futuriste** : bleu-noir profond `#06080F` + cyan électrique `#00C6FF`, radius angulaires
-- **Sombre** : gris classique
-- **OLED** : noir absolu (économie batterie)
-- **Clair**
+### Planning & Periodisation
+- Calendrier semaine avec navigation, indicateurs planifié/réalisé
+- Templates CRUD (création, édition, réutilisation)
+- Macrocycles + mésocycles par blocs (6 types) avec génération automatique des séances
+- Bannière TODAY avec semaine du mésocycle actif
+- État vide contextuel avec bouton "Planifier" direct
+
+### Export
+- JSON complet (séances + mensurations + forme) via Share natif iOS/Android
+
+### UI / Thèmes / Animations
+- **Tab bar animée** : spring press (scale + séquence) + indicateur actif en haut
+- **Thèmes premium retravaillés** : Light (bleu `#2563EB`), Dark (charcoal iOS + `#0A84FF`), OLED (noir pur), Neo (cyan `#00D4FF` + textMuted lisible)
+- **SessionCard** : entering `FadeInDown.springify()`
+- **SetRow** : pulse sur complétion `withSequence(spring 1.35 → spring 1.0)`
+- **ExerciseInstanceCard** : `LayoutAnimation.easeInEaseOut` sur ajout de série
 
 ---
 
@@ -253,7 +249,7 @@ Un seed complet est disponible pour tester toutes les fonctionnalités :
 
 ## Prochains chantiers
 
-- [ ] Réordonnancement des exercices en séance active (drag & drop)
-- [ ] Export CSV / partage de séance
-- [ ] Notifications de rappel de séance planifiée
-- [ ] Comparaison de sessions (côte-à-côte)
+- [ ] Notifications de rappel de séance planifiée (expo-notifications)
+- [ ] Comparaison de deux séances côte-à-côte
+- [ ] Landmarks MEV/MAV/MRV personnalisables par utilisateur
+- [ ] Onboarding premier lancement

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -6,11 +7,14 @@ import { useScheduledSessionsForDate } from '@/hooks/useScheduledSessions';
 import { useWorkoutTemplates } from '@/hooks/useWorkoutTemplates';
 import { useSessions } from '@/hooks/useSessions';
 import { useActiveMesocycle } from '@/hooks/useMesocycles';
+import { useDailyReadiness } from '@/hooks/useDailyReadiness';
 import { getMesocycleWeek } from '@/db/models/Mesocycle';
 import { BLOCK_COLORS, BLOCK_LABELS } from '@/features/planning/blockUtils';
 import { startSession } from '@/features/session/sessionActions';
 import { startFromTemplate } from '@/features/planning/planningActions';
+import { readinessScore } from '@/features/readiness/ReadinessCard';
 import ActiveSessionView from '@/features/session/ActiveSessionView';
+import ReadinessModal from '@/features/readiness/ReadinessModal';
 import type ScheduledSession from '@/db/models/ScheduledSession';
 
 const DAY_FR = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
@@ -136,6 +140,59 @@ function TodayPlannedCard({
   );
 }
 
+function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function TodayReadinessBadge({ onOpenModal }: { onOpenModal: () => void }) {
+  const { theme: { colors, radius } } = useTheme();
+  const entries = useDailyReadiness();
+  const today = new Date();
+  const todayEntry = entries.find(e => isSameDay(e.recordedAt, today));
+
+  if (todayEntry) {
+    const score = readinessScore(todayEntry);
+    let dotColor: string;
+    if (score >= 3.5) dotColor = colors.success;
+    else if (score >= 2.5) dotColor = colors.warning;
+    else dotColor = colors.danger;
+
+    return (
+      <View style={[styles.readinessBadge, {
+        backgroundColor: dotColor + '15',
+        borderColor: dotColor + '40',
+        borderRadius: radius.sm,
+      }]}>
+        <View style={[styles.readinessDot, { backgroundColor: dotColor }]} />
+        <Text style={[styles.readinessBadgeText, { color: dotColor }]}>
+          {Math.round(score * 10) / 10} / 5 — Forme évaluée
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <TouchableOpacity
+      style={[styles.readinessBadge, {
+        backgroundColor: colors.accentDim,
+        borderColor: colors.borderAccent + '44',
+        borderRadius: radius.sm,
+      }]}
+      onPress={onOpenModal}
+      activeOpacity={0.8}
+    >
+      <Ionicons name="heart-outline" size={13} color={colors.accent} />
+      <Text style={[styles.readinessBadgeText, { color: colors.accent }]}>
+        Évaluer ta forme →
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 function NoSessionView({
   scheduled,
   templateName,
@@ -149,13 +206,16 @@ function NoSessionView({
 }) {
   const { theme: { colors, radius, mode } } = useTheme();
   const isNeo = mode === 'neo';
+  const [showReadinessModal, setShowReadinessModal] = useState(false);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <DateHeader />
-      <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 10, gap: 8 }}>
         <ActiveMesocycleBanner />
+        <TodayReadinessBadge onOpenModal={() => setShowReadinessModal(true)} />
       </View>
+      <ReadinessModal visible={showReadinessModal} onClose={() => setShowReadinessModal(false)} />
 
       <View style={styles.centerZone}>
         <View style={[styles.iconRing, {
@@ -339,4 +399,14 @@ const styles = StyleSheet.create({
   deloadPill: { paddingHorizontal: 7, paddingVertical: 2 },
   deloadText: { fontSize: 11, fontWeight: '800' },
   weekBadge: { fontSize: 16, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  readinessBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+  },
+  readinessDot: { width: 8, height: 8, borderRadius: 4 },
+  readinessBadgeText: { fontSize: 13, fontWeight: '600', flex: 1 },
 });

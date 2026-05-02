@@ -14,6 +14,7 @@ import Animated, {
   useSharedValue,
   withSpring,
   withTiming,
+  withSequence,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -63,6 +64,7 @@ function SetRow({ set, index, ghost, onCompleted, nextRef }: Props) {
   const repsRef = useRef<TextInput>(null);
   const [editingTempo, setEditingTempo] = useState(false);
   const translateX = useSharedValue(0);
+  const doneScale = useSharedValue(1);
 
   const [te, setTe] = useState(String(set.tempoEccentric));
   const [tpb, setTpb] = useState(String(set.tempoPauseBottom));
@@ -121,10 +123,14 @@ function SetRow({ set, index, ghost, onCompleted, nextRef }: Props) {
     const next = !set.completed;
     if (next) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      doneScale.value = withSequence(
+        withSpring(1.35, { damping: 6, stiffness: 400 }),
+        withSpring(1, { damping: 12, stiffness: 300 }),
+      );
       onCompleted?.();
     }
     updateSet(set, { completed: next });
-  }, [set, onCompleted]);
+  }, [set, onCompleted, doneScale]);
 
   const confirmDelete = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -149,6 +155,7 @@ function SetRow({ set, index, ghost, onCompleted, nextRef }: Props) {
     });
 
   const rowStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
+  const doneStyle = useAnimatedStyle(() => ({ transform: [{ scale: doneScale.value }] }));
 
   const typeColor = TYPE_COLORS[set.setType] ?? colors.accent;
   const tempoStr = fmt(set.tempoEccentric, set.tempoPauseBottom, set.tempoConcentric, set.tempoPauseTop);
@@ -231,23 +238,25 @@ function SetRow({ set, index, ghost, onCompleted, nextRef }: Props) {
             </View>
 
             {/* Complete button */}
-            <TouchableOpacity
-              style={[
-                styles.doneBtn,
-                {
-                  backgroundColor: set.completed ? colors.success : 'transparent',
-                  borderColor: set.completed ? colors.success : colors.border,
-                },
-              ]}
-              onPress={toggleComplete}
-              hitSlop={8}
-            >
-              <Ionicons
-                name={set.completed ? 'checkmark' : 'ellipse-outline'}
-                size={20}
-                color={set.completed ? '#fff' : colors.border}
-              />
-            </TouchableOpacity>
+            <Animated.View style={doneStyle}>
+              <TouchableOpacity
+                style={[
+                  styles.doneBtn,
+                  {
+                    backgroundColor: set.completed ? colors.success : 'transparent',
+                    borderColor: set.completed ? colors.success : colors.border,
+                  },
+                ]}
+                onPress={toggleComplete}
+                hitSlop={8}
+              >
+                <Ionicons
+                  name={set.completed ? 'checkmark' : 'ellipse-outline'}
+                  size={20}
+                  color={set.completed ? '#fff' : colors.border}
+                />
+              </TouchableOpacity>
+            </Animated.View>
           </View>
 
           {/* ── Detail row : RPE / RIR / Tempo ── */}

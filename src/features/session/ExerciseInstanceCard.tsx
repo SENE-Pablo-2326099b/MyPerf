@@ -1,16 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  LayoutAnimation,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useWorkingSets } from '@/hooks/useWorkingSets';
 import { useLastSets } from '@/hooks/useLastSets';
-import { addSet, removeExercise, updateIntention } from './sessionActions';
+import { addSet, removeExercise, updateIntention, updateInstanceNotes } from './sessionActions';
 import SetRow from './SetRow';
 import type ExerciseInstance from '@/db/models/ExerciseInstance';
 import type Exercise from '@/db/models/Exercise';
@@ -35,9 +38,22 @@ const INTENTION_COLORS: Record<Intention, string> = {
 interface Props {
   instance: ExerciseInstance;
   onSetComplete?: (intention: Intention) => void;
+  reorderMode?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  isFirst?: boolean;
+  isLast?: boolean;
 }
 
-function ExerciseInstanceCard({ instance, onSetComplete }: Props) {
+function ExerciseInstanceCard({
+  instance,
+  onSetComplete,
+  reorderMode = false,
+  onMoveUp,
+  onMoveDown,
+  isFirst = false,
+  isLast = false,
+}: Props) {
   const { theme: { colors, radius, mode } } = useTheme();
   const isNeo = mode === 'neo';
   const sets = useWorkingSets(instance.id);
@@ -65,6 +81,7 @@ function ExerciseInstanceCard({ instance, onSetComplete }: Props) {
 
   const handleAddSet = useCallback(() => {
     const prev = sets.length > 0 ? sets[sets.length - 1] : null;
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     addSet(instance, sets.length + 1, prev);
   }, [instance, sets]);
 
@@ -143,25 +160,45 @@ function ExerciseInstanceCard({ instance, onSetComplete }: Props) {
           )}
         </View>
 
-        {/* Right: completion pill + remove */}
-        <View style={styles.headerRight}>
-          {sets.length > 0 && (
-            <View style={[
-              styles.progressPill,
-              {
-                backgroundColor: allDone ? colors.success + '20' : colors.background,
-                borderColor: allDone ? colors.success : colors.border,
-              },
-            ]}>
-              <Text style={[styles.progressTxt, { color: allDone ? colors.success : colors.textMuted }]}>
-                {completedCount}/{sets.length}
-              </Text>
-            </View>
-          )}
-          <TouchableOpacity onPress={handleRemove} hitSlop={12}>
-            <Ionicons name="close-circle" size={22} color={colors.textMuted} />
-          </TouchableOpacity>
-        </View>
+        {/* Right: reorder controls OR completion pill + remove */}
+        {reorderMode ? (
+          <View style={styles.reorderControls}>
+            <TouchableOpacity
+              onPress={() => { Haptics.selectionAsync(); onMoveUp?.(); }}
+              hitSlop={10}
+              disabled={isFirst}
+            >
+              <Ionicons name="chevron-up" size={22} color={isFirst ? colors.textMuted + '50' : colors.text} />
+            </TouchableOpacity>
+            <Ionicons name="reorder-three-outline" size={22} color={colors.textMuted} />
+            <TouchableOpacity
+              onPress={() => { Haptics.selectionAsync(); onMoveDown?.(); }}
+              hitSlop={10}
+              disabled={isLast}
+            >
+              <Ionicons name="chevron-down" size={22} color={isLast ? colors.textMuted + '50' : colors.text} />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.headerRight}>
+            {sets.length > 0 && (
+              <View style={[
+                styles.progressPill,
+                {
+                  backgroundColor: allDone ? colors.success + '20' : colors.background,
+                  borderColor: allDone ? colors.success : colors.border,
+                },
+              ]}>
+                <Text style={[styles.progressTxt, { color: allDone ? colors.success : colors.textMuted }]}>
+                  {completedCount}/{sets.length}
+                </Text>
+              </View>
+            )}
+            <TouchableOpacity onPress={handleRemove} hitSlop={12}>
+              <Ionicons name="close-circle" size={22} color={colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* ── Intention picker ── */}
@@ -228,6 +265,20 @@ function ExerciseInstanceCard({ instance, onSetComplete }: Props) {
         </View>
         <Text style={[styles.addTxt, { color: colors.accent }]}>Ajouter une série</Text>
       </TouchableOpacity>
+
+      {/* ── Notes ── */}
+      <View style={[styles.notesRow, { borderTopColor: colors.border }]}>
+        <Text style={[styles.notesIcon, { color: colors.textMuted }]}>📝</Text>
+        <TextInput
+          style={[styles.notesInput, { color: colors.text }]}
+          placeholder="Notes sur cet exercice…"
+          placeholderTextColor={colors.textMuted}
+          defaultValue={instance.notes ?? ''}
+          onEndEditing={e => updateInstanceNotes(instance, e.nativeEvent.text.trim() || null)}
+          multiline
+          maxLength={200}
+        />
+      </View>
     </View>
   );
 }
@@ -327,6 +378,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addTxt: { fontSize: 14, fontWeight: '700' },
+
+  reorderControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingTop: 2,
+  },
+
+  notesRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 6,
+  },
+  notesIcon: { fontSize: 13, lineHeight: 20 },
+  notesInput: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+    textAlignVertical: 'top',
+    minHeight: 20,
+  },
 });
 
 export default React.memo(ExerciseInstanceCard);

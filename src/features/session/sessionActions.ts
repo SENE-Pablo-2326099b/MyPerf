@@ -3,6 +3,8 @@ import type Session from '@/db/models/Session';
 import type ExerciseInstance from '@/db/models/ExerciseInstance';
 import type Exercise from '@/db/models/Exercise';
 import type WorkingSet from '@/db/models/WorkingSet';
+import type WorkoutTemplate from '@/db/models/WorkoutTemplate';
+import type TemplateExercise from '@/db/models/TemplateExercise';
 import type { Intention } from '@/db/models/ExerciseInstance';
 import type { SetType } from '@/db/models/WorkingSet';
 
@@ -115,4 +117,58 @@ export async function removeExercise(instance: ExerciseInstance): Promise<void> 
       instance.prepareDestroyPermanently(),
     );
   });
+}
+
+// Reorder exercise instances by updating their `order` field.
+// instances is already in the desired order; assign order = index.
+export async function reorderExercises(instances: ExerciseInstance[]): Promise<void> {
+  await database.write(async () => {
+    await database.batch(
+      ...instances.map((inst, idx) =>
+        inst.prepareUpdate(i => { i.order = idx; }),
+      ),
+    );
+  });
+}
+
+// Save a session's exercises as a new WorkoutTemplate.
+export async function saveSessionAsTemplate(
+  name: string,
+  instances: ExerciseInstance[],
+): Promise<WorkoutTemplate> {
+  const sorted = [...instances].sort((a, b) => a.order - b.order);
+
+  const template = await database.write(() =>
+    database.get<WorkoutTemplate>('workout_templates').create(t => {
+      t.name = name;
+    }),
+  );
+
+  await database.write(async () => {
+    await database.batch(
+      ...sorted.map((inst, idx) =>
+        database.get<TemplateExercise>('template_exercises').prepareCreate(te => {
+          te.templateId = template.id;
+          te.exerciseId = inst.exercise.id;
+          te.order = idx;
+          te.intention = inst.intention;
+          te.targetSets = inst.targetSets;
+          te.repRangeMin = inst.repRangeMin;
+          te.repRangeMax = inst.repRangeMax;
+          te.rpeTarget = inst.rpeTarget;
+          te.restSeconds = inst.restSeconds;
+        }),
+      ),
+    );
+  });
+
+  return template;
+}
+
+// Update notes on an ExerciseInstance.
+export async function updateInstanceNotes(
+  instance: ExerciseInstance,
+  notes: string | null,
+): Promise<void> {
+  await database.write(() => instance.update(i => { i.notes = notes; }));
 }

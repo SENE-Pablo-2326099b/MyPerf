@@ -436,11 +436,28 @@ export default function PlanningScreen() {
             ))}
 
             {dayScheduled.length === 0 && dayCompleted.length === 0 && (
-              <View style={styles.emptyDay}>
-                <Text style={[styles.emptyDayText, { color: colors.textMuted }]}>
-                  {isPast ? 'Pas de séance ce jour-là.' : 'Rien de prévu. Planifie une séance !'}
-                </Text>
-              </View>
+              isPast ? (
+                <View style={styles.emptyDay}>
+                  <Text style={[styles.emptyDayText, { color: colors.textMuted }]}>
+                    Pas de séance ce jour-là.
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.emptyDayFuture}>
+                  <Ionicons name="calendar-outline" size={48} color={colors.border} />
+                  <Text style={[styles.emptyDayTitle, { color: colors.text }]}>
+                    Aucune séance planifiée
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.planBtn, { backgroundColor: colors.accent, borderRadius: 10 }]}
+                    onPress={() => setShowScheduleModal(true)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="add" size={16} color="#fff" />
+                    <Text style={styles.planBtnText}>Planifier une séance</Text>
+                  </TouchableOpacity>
+                </View>
+              )
             )}
           </ScrollView>
 
@@ -546,6 +563,10 @@ const styles = StyleSheet.create({
   sessionTime: { fontSize: 12 },
   emptyDay: { alignItems: 'center', paddingTop: 40, gap: 12 },
   emptyDayText: { fontSize: 14, textAlign: 'center' },
+  emptyDayFuture: { alignItems: 'center', paddingTop: 48, gap: 16 },
+  emptyDayTitle: { fontSize: 17, fontWeight: '700', textAlign: 'center' },
+  planBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 18, paddingVertical: 11 },
+  planBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   templateList: { padding: 16, paddingBottom: 100 },
   templateCard: {
     flexDirection: 'row',

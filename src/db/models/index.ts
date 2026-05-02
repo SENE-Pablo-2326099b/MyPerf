@@ -8,6 +8,8 @@ export { default as ScheduledSession } from './ScheduledSession';
 export { default as Macrocycle } from './Macrocycle';
 export { default as Mesocycle } from './Mesocycle';
 export { default as Microcycle } from './Microcycle';
+export { default as BodyMetric } from './BodyMetric';
+export { default as DailyReadiness } from './DailyReadiness';
 export type { Equipment, ExerciseType } from './Exercise';
 export type { Intention } from './ExerciseInstance';
 export type { SetType } from './WorkingSet';

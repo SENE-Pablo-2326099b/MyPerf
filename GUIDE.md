@@ -13,12 +13,16 @@
    - [Ajouter un exercice](#ajouter-un-exercice)
    - [Renseigner une série](#renseigner-une-série)
    - [Timer de repos](#timer-de-repos)
+   - [Réorganiser les exercices](#réorganiser-les-exercices)
+   - [Notes par exercice](#notes-par-exercice)
    - [Terminer la séance](#terminer-la-séance)
 5. [LOG — Historique & statistiques](#log--historique--statistiques)
-6. [PLAN — Planning & periodisation](#plan--planning--periodisation)
-7. [EXOS — Catalogue d'exercices](#exos--catalogue-dexercices)
-8. [CFG — Réglages](#cfg--réglages)
-9. [Concepts clés](#concepts-clés)
+6. [Corps & Mensurations](#corps--mensurations)
+7. [Forme & Fatigue](#forme--fatigue)
+8. [PLAN — Planning & periodisation](#plan--planning--periodisation)
+9. [EXOS — Catalogue d'exercices](#exos--catalogue-dexercices)
+10. [CFG — Réglages](#cfg--réglages)
+11. [Concepts clés](#concepts-clés)
 
 ---
 
@@ -26,7 +30,7 @@
 
 MyPerf enregistre tes séances en détail — chaque série, chaque kilo, chaque tempo — et te donne les données du **dernier passage** en temps réel pendant l'effort. Tout fonctionne hors-ligne, rien ne part sur un serveur.
 
-Il est pensé pour des pratiquants qui suivent une vraie programmation (PPL, Upper/Lower, etc.) et veulent des métriques précises : tonnage, e1RM estimé, volume par groupe musculaire, fréquence d'entraînement.
+Il est pensé pour des pratiquants qui suivent une vraie programmation (PPL, Upper/Lower, etc.) et veulent des métriques précises : tonnage, e1RM estimé, volume par groupe musculaire, records personnels, suivi du poids de corps, et auto-régulation de la fatigue.
 
 ---
 
@@ -38,11 +42,11 @@ La barre en bas donne accès aux 5 sections de l'app :
 |--------|-------|------|
 | **TODAY** | ⚡ | Écran principal — démarre ou continue ta séance du jour |
 | **PLAN** | 📅 | Calendrier + templates + macrocycles |
-| **LOG** | 📊 | Historique de toutes tes séances + stats |
+| **LOG** | 📊 | Historique des séances + statistiques de volume |
 | **EXOS** | 🏋️ | Catalogue d'exercices — consultation et création |
-| **CFG** | ⚙️ | Thème visuel de l'app |
+| **CFG** | ⚙️ | Thème visuel + export des données |
 
-Le bouton **TODAY** est centré et légèrement surélevé — c'est l'action principale.
+Le bouton **TODAY** est centré et surélevé — c'est l'action principale. Chaque appui sur un onglet déclenche un retour haptique et une animation de rebond.
 
 ---
 
@@ -56,181 +60,233 @@ Si tu as un mésocycle actif, une **bannière colorée** s'affiche sous la date 
 - La couleur correspond au **type de bloc** (bleu = hypertrophie, rouge = force, jaune = puissance, etc.)
 - Elle indique la **semaine en cours** sur le total (ex : S2/6) et le nom du mésocycle
 
+### Badge de forme
+
+Un badge compact **"Évaluer ta forme →"** s'affiche sous la bannière de mésocycle. Appuie dessus pour enregistrer ton état du jour (sommeil, courbatures, stress, motivation).
+
+Si tu as déjà évalué ta forme aujourd'hui, le badge affiche ton score coloré : **vert** (≥ 3.5/5), **orange** (2.5–3.5), **rouge** (< 2.5).
+
 ### Démarrer
 
-**Séance planifiée ce jour** — une carte s'affiche avec le nom du template et le type de bloc. Appuie sur **"Lancer la séance"** pour démarrer directement depuis le template (les exercices et paramètres sont pré-remplis).
+**Séance planifiée ce jour** — une carte s'affiche avec le nom du template et le type de bloc. Appuie sur **"Lancer la séance"** pour démarrer directement depuis le template.
 
-**Aucune séance planifiée** — le bouton **"Séance libre"** démarre une séance vierge. Tu ajoutes les exercices toi-même.
-
-> Si une séance planifiée est affichée mais que tu préfères faire autre chose, le lien **"Démarrer une séance libre à la place"** est disponible en dessous.
+**Aucune séance planifiée** — le bouton **"Séance libre"** démarre une séance vierge.
 
 ---
 
 ## Séance active
 
-Une fois la séance lancée, l'écran de séance active apparaît.
-
 ### En-tête
 
-- **Chrono** (grand chiffre à gauche) : temps écoulé depuis le début, mis à jour chaque seconde
-- **Nom de la séance** + nombre d'exercices ajoutés
-- **Bouton "Fin"** (rouge, en haut à droite) : ouvre la fenêtre de fin de séance
+- **Chrono** (32px, à gauche) : temps écoulé, mis à jour chaque seconde. Un point vert pulse à côté.
+- **Nom de la séance** + nombre d'exercices
+- **"≡ Ordre"** (apparaît dès 2+ exercices) : active le mode réorganisation
+- **Bouton "Fin"** (rouge) : ouvre la fenêtre de fin de séance
 
 ### Ajouter un exercice
 
-Appuie sur le bouton **"+ Exercice"** en bas à droite de l'écran.
+Appuie sur le bouton **"+ Exercice"** (pill en bas à droite).
 
-Un panneau s'ouvre avec :
-- Une **barre de recherche** (autofocus)
-- Des **chips de filtre par groupe musculaire**, chacun avec sa couleur
-  - Rouge = Pecto · Bleu = Dos · Vert = Jambes · Jaune = Épaules · Violet = Bras · Gris = Core
-- La liste des exercices avec, pour chacun : nom, groupe musculaire, équipement
-
-Appuie sur un exercice pour l'ajouter à la séance. Tu peux fermer le panneau avec la croix en haut.
+Le panneau s'ouvre avec :
+- Une **barre de recherche** autofocus avec compteur de résultats
+- Des **chips de filtre par groupe musculaire**, chacun coloré (rouge = Pecto, bleu = Dos, vert = Jambes, jaune = Épaules, violet = Bras, gris = Core)
+- La liste des exercices avec une barre colorée à gauche indiquant le groupe musculaire
 
 ### Carte exercice
 
-Chaque exercice ajouté apparaît sous forme de carte. Sur la gauche de la carte, une **barre colorée de 4px** indique l'intention active (voir [Concepts clés](#concepts-clés)).
+Chaque exercice est une carte avec une **barre colorée de 4px** à gauche indiquant l'intention.
 
 **En-tête de la carte :**
-- **Nom de l'exercice** (gros, gras)
-- **Badge d'intention** (ex : "Hypertrophie") — appuie dessus pour en changer
-- **Compteur de séries** (ex : "2/5 séries")
-- **Pill de progression** à droite (ex : 2/5) — vire au vert quand toutes les séries sont complètes
-- **Tonnage** et **e1RM estimé** s'affichent en chips dès que des séries de travail sont complétées
-- La **croix** en haut à droite retire l'exercice et ses séries
+- **Nom de l'exercice** (17px bold)
+- **Badge d'intention** tappable pour changer
+- **Compteur de séries** + **pill de progression** (vire au vert quand tout est fait)
+- **Tonnage** et **e1RM live** en chips dès que des séries de travail sont validées
+- **Croix** pour retirer l'exercice
 
-**Changer d'intention :**
-Appuie sur le badge (ex : "Hypertrophie") pour dérouler le sélecteur. Choisis parmi :
-- **Puissance** (jaune) — tempo explosif, longs repos
-- **Force** (rouge) — charges lourdes, peu de reps
-- **Hypertrophie** (bleu) — volume modéré, tension mécanique
-- **Endurance** (vert) — hautes reps, courts repos
-- **Métabolique** (violet) — brûlure musculaire, rest-pause / drop sets
-
-L'intention influence la **durée de repos par défaut** du timer automatique.
+**Changer d'intention :** appuie sur le badge pour dérouler le sélecteur avec icônes et couleurs.
 
 ### Renseigner une série
 
-Chaque ligne de série contient :
-
 ```
- #   TYPE      POIDS      REPS      ✓
- 1  TRAVAIL    70.0 kg    12 ×      ○
-              ↑ 65.0     ↑ 10
-     RPE 8   ·  RIR 1  · ⏱ 3-0-X-0
+ #   TYPE        POIDS       REPS       ✓
+ 1  TRAVAIL    70.0 kg     12 ×        ○
+               ↑ 65.0      ↑ 10
+     [RPE 8]  ·  [RIR 1]  ·  [⏱ 3-0-X-0]
 ```
 
-**Numéro** — à gauche, non modifiable.
+- **Type** (badge) : appuie pour cycler (Chauffe → Travail → Drop → R+P → Myoreps)
+- **Poids / Reps** : chiffres en 22px, tap pour éditer au clavier
+- **↑ valeurs en bleu** : dernier passage sur cet exercice
+- **Bouton ✓** : valide la série → fond vert + animation de pop + timer de repos
+- **Glisse à gauche** pour supprimer la ligne
 
-**Type de série** (badge coloré) — appuie pour le faire tourner dans le cycle :
-- **Chauffe** (jaune) — non comptée dans le tonnage
-- **Travail** (bleu) — série principale
-- **Drop** (rouge) — drop set enchaîné
-- **R+P** (violet) — rest-pause
-- **Myoreps** (vert)
-
-**Poids** et **Reps** — appuie sur le chiffre pour éditer. Le clavier numérique s'ouvre. Valide avec la touche "Suivant" ou "OK" pour passer au champ suivant.
-
-**Flèches de référence (↑)** — si tu as déjà fait cet exercice dans une séance précédente, les valeurs du **dernier passage** s'affichent en petit sous les champs (en bleu). Elles te donnent un repère pour progresser.
-
-**Bouton ✓** (cercle à droite) — appuie pour **valider la série**. La ligne vire au vert, le timer de repos se déclenche automatiquement.
-
-**Supprimer une série** — glisse la ligne vers la **gauche** pour faire apparaître le bouton de suppression rouge.
-
-#### RPE, RIR et Tempo
-
-En bas de chaque ligne de série, trois champs optionnels :
-
-- **RPE** (Rate of Perceived Exertion) : ton effort ressenti de 0 à 10. 10 = échec absolu, 8 = 2 reps en réserve.
-- **RIR** (Reps In Reserve) : nombre de reps que tu aurais pu faire en plus.
-- **Tempo** (⏱) : appuie sur le chrono pour ouvrir l'éditeur. Format `Ecc - Bas - Con - Haut` en secondes. `X` = explosif.
-  - Exemple `3-1-X-0` : 3s de descente, 1s en bas, explosif à la montée, 0s en haut.
+**RPE, RIR, Tempo** : chips en bas de chaque ligne. Tap tempo → éditeur 4 champs (Ecc / Bas / Con / Haut, `X` = explosif).
 
 ### Timer de repos
 
-Dès qu'une série est complétée (bouton ✓), le **timer de repos** apparaît en bas de l'écran. Il affiche :
-- Le type de séance (ex : HYPERTROPHIE)
-- Une **barre de progression** qui se vide
-- Le **temps restant** en grand
-- Les boutons **-30s** et **+30s** pour ajuster à la volée
-- Le bouton **"Passer"** pour ignorer le repos et enchaîner
+Panneau flottant qui remonte depuis le bas dès qu'une série est validée.
 
-**Modifier la durée de repos :** appuie directement sur le grand chrono. Deux roues (minutes et secondes) apparaissent pour choisir une durée personnalisée. Confirme avec le bouton vert ✓.
+- **Barre de progression** + grand chrono coloré (rouge à 10 secondes)
+- **-30s / +30s** pour ajuster
+- **Tap sur le chrono** → deux roues de sélection (minutes 0-15 / secondes 0/15/30/45) pour une durée personnalisée
+- **"Passer"** pour ignorer
 
-**Durées par défaut selon l'intention :**
-| Intention | Repos |
-|-----------|-------|
+| Intention | Repos par défaut |
+|-----------|-----------------|
 | Puissance | 4 min |
 | Force | 3 min |
 | Hypertrophie | 1 min 30 |
 | Endurance | 1 min |
 | Métabolique | 45 sec |
 
-Le timer se ferme automatiquement à zéro (vibration d'alerte à 10 secondes).
+### Réorganiser les exercices
+
+Avec 2+ exercices dans la séance, appuie sur **"≡ Ordre"** dans le header.
+
+Chaque carte affiche des boutons **↑** et **↓** (désactivés aux extrémités). L'ordre est sauvegardé immédiatement en base. Appuie sur **"✓ Terminé"** pour quitter ce mode.
+
+### Notes par exercice
+
+En bas de chaque carte exercice, un champ **"Notes sur cet exercice…"** permet d'annoter une sensation, une technique particulière ou un ajustement. La note est sauvegardée automatiquement.
 
 ### Terminer la séance
 
-Appuie sur **"Fin"** en haut à droite. Une fenêtre de confirmation s'ouvre avec :
+Appuie sur **"Fin"**. Une fenêtre s'ouvre avec :
 - La durée totale et le nombre d'exercices
-- Un champ **notes libres** (optionnel) — idéal pour noter un PR, une sensation, un ajustement
-
-Appuie sur **"Sauvegarder"** pour enregistrer la séance. Elle apparaît immédiatement dans l'historique.
+- Un champ **notes libres** pour la séance
+- Un switch **"Sauvegarder comme template"** : si activé, un TextInput apparaît pour nommer le template. Appuie sur "Sauvegarder" — la séance est enregistrée **et** un template réutilisable est créé.
 
 ---
 
 ## LOG — Historique & statistiques
 
-### En-tête : volume hebdomadaire
+### Volume hebdomadaire avec landmarks MEV/MAV/MRV
 
-Une carte **"Volume 7 derniers jours"** affiche des barres horizontales pour chaque groupe musculaire. La couleur des barres indique le niveau de volume :
-- **Bleu / accent** : volume normal
-- **Orange** : volume élevé (≥ 5 séries)
-- **Rouge** : volume très élevé (≥ 10 séries)
+La carte **"Volume 7 derniers jours"** affiche des barres pour chaque groupe musculaire. La couleur indique où tu te situes par rapport aux seuils scientifiques :
 
-Sous les barres, la **Body Map** colorise les muscles travaillés sur un schéma corporel.
+| Couleur | Zone | Signification |
+|---------|------|---------------|
+| **Gris** | < MEV | Volume insuffisant pour stimuler la croissance |
+| **Vert** | MEV → MAV | Zone optimale — progression maximale |
+| **Orange** | MAV → MRV | Volume élevé — récupération à surveiller |
+| **Rouge** | > MRV | Surentraînement probable |
 
-### Fréquence d'entraînement
+Deux repères verticaux sur chaque barre marquent le MEV et le plafond de la MAV. La légende de couleur est affichée sous les barres.
 
-La carte **"Fréquence 4 dernières semaines"** est une grille (muscles × semaines). Chaque cellule indique combien de fois ce groupe musculaire a été entraîné cette semaine :
-- Cellule vide = 0 séance
-- Cellule foncée = 1 séance
-- Cellule encore plus foncée = 2 séances
-- Cellule pleine = 3+ séances
+### Corps & Mensurations (lien vers page dédiée)
 
-La légende en bas à droite rappelle l'échelle.
+Un bouton **"Corps & Mensurations"** renvoie vers la page dédiée au suivi du poids de corps et des mensurations. Voir section [Corps & Mensurations](#corps--mensurations).
 
-### Liste des séances
+### Forme & Charge (Readiness)
 
-En dessous des statistiques, toutes les séances terminées apparaissent, les plus récentes en premier.
+La carte **"Forme & Charge"** affiche :
+- La **timeline des 7 derniers jours** de forme (dots colorés vert/orange/rouge)
+- Le **ratio Aiguë/Chronique (A:C)** : charge des 7 derniers jours vs moyenne des 28 derniers jours — vert < 1.3, orange 1.3–1.5, rouge > 1.5
+- Une **bannière de déload suggéré** si ratio > 1.3 ET forme < 3/5
+- Si aucune évaluation aujourd'hui : le formulaire de check-in s'affiche directement dans la carte
 
-**Chaque carte de séance affiche :**
-- Le nom et la date/heure
-- La durée
-- Le nombre de séries et le tonnage total
-- La liste des exercices (max 4, puis "+X exercices")
-- Les notes de séance si renseignées
+### Records personnels (PRs)
 
-**Appuie sur une carte** pour ouvrir le **détail complet** de la séance.
+La carte **"Records personnels"** liste tes meilleurs poids max et e1RM par exercice, triés par e1RM décroissant. Se met à jour automatiquement quand une séance est terminée.
+
+### Heatmap de fréquence
+
+Grille 4 semaines × 6 groupes musculaires. Chaque cellule = nombre de séances pour ce groupe cette semaine. Légende de densité en bas.
+
+### Recherche dans l'historique
+
+Une barre de recherche au-dessus de la liste filtre les séances par **nom** ou **notes**. Un compteur de résultats s'affiche. Efface la recherche avec la croix ou le bouton "×".
 
 ### Détail d'une séance
 
-- **En-tête** : date, heure, durée
-- **Stats** : séries complétées / total, nb d'exercices, volume total en tonnes
-- **Par exercice** : toutes les séries avec type, poids, reps, RPE, RIR, tempo
+Tap sur une carte → détail complet avec toutes les séries (type, poids, reps, RPE, RIR, tempo).
 
-**Icône graphique** (bouton ≈ à droite du nom de l'exercice) : ouvre le **graphique de progression** pour cet exercice.
+Tap sur l'**icône graphique** à droite d'un exercice → graphique de progression (poids max / e1RM / volume) avec détection PR et tableau des 8 dernières valeurs.
 
-### Graphique de progression
+---
 
-Trois métriques disponibles :
-- **Poids max** : le poids le plus lourd soulevé à chaque séance
-- **e1RM** : force maximale estimée (formule de Epley : poids × (1 + reps/30))
-- **Volume** : tonnage total de la séance pour cet exercice
+## Corps & Mensurations
 
-Un **badge "PR"** apparaît si ta dernière séance dépasse ton précédent maximum sur la métrique sélectionnée.
+Accessible depuis le bouton "Corps & Mensurations" dans LOG (ou directement depuis une URL interne `/body`).
 
-L'historique détaillé en bas du graphique montre les 8 dernières valeurs avec le delta (variation) par rapport à la séance précédente.
+### Saisir une mesure
+
+Appuie sur le bouton **"+"** (en haut à droite). Le formulaire s'ouvre :
+- **Date** : navigue avec ← → (défaut = aujourd'hui, mais tu peux saisir rétrospectivement n'importe quand)
+- **Poids** (kg) — champ principal, affiché en grand
+- Toggle **"Mensurations détaillées"** pour afficher les champs optionnels : % masse grasse, poitrine, taille, hanches, bras gauche/droit, cuisse gauche/droite (tous en cm)
+- **Notes** optionnelles
+
+Il n'y a **aucune fréquence imposée** — tu saisis quand tu veux, une fois par semaine ou plus rarement.
+
+### Statistiques rapides
+
+En haut de la page :
+- Dernier poids en grand (36px)
+- **Delta** par rapport à l'entrée précédente (vert = perte de poids, rouge = prise)
+- Date de la dernière saisie
+- % masse grasse si renseigné
+
+### Graphique de poids
+
+Courbe des 16 dernières entrées (pleine largeur). Le dernier point est mis en évidence. Les dates extrêmes et médianes sont affichées sur l'axe X.
+
+### Mensurations
+
+Grille 2 colonnes avec toutes les mesures qui ont au moins une valeur saisie. Chaque case affiche :
+- Le libellé (ex : "Taille")
+- La dernière valeur
+- Le delta par rapport à la saisie précédente (sens positif/négatif adapté : moins = vert pour taille/hanches/MG, plus = vert pour bras/cuisses)
+
+### Historique complet
+
+Toutes les entrées en ordre chronologique inverse. Chaque ligne affiche la date, le poids, et les mensurations non-nulles sous forme de chips. **Glisse à gauche** pour supprimer une entrée.
+
+---
+
+## Forme & Fatigue
+
+### Check-in quotidien
+
+Accessible depuis :
+- Le badge "Évaluer ta forme" sur l'écran **TODAY**
+- La carte "Forme & Charge" dans **LOG** (si pas encore fait aujourd'hui)
+
+Le formulaire demande 4 évaluations sur une échelle de 1 à 5 :
+
+| Critère | 1 | 5 |
+|---------|---|---|
+| 😴 **Sommeil** | Très mauvais | Excellent |
+| 💪 **Courbatures** | Très courbaturé | Aucune douleur |
+| 🧠 **Stress** | Très stressé | Aucun stress |
+| 🔥 **Motivation** | Aucune | Maximale |
+
+Les boutons sont colorés intelligemment : vert pour les valeurs favorables, orange/rouge pour les valeurs défavorables (le sens est inversé pour courbatures et stress).
+
+Une fois les 4 critères remplis, le bouton "Enregistrer" s'active. Les notes sont optionnelles.
+
+### Score de forme
+
+Le score est calculé automatiquement : `(sommeil + (6−courbatures) + (6−stress) + motivation) / 4`
+
+Résultat sur 5 : **vert ≥ 3.5**, **orange 2.5–3.5**, **rouge < 2.5**.
+
+### Ratio Aiguë/Chronique (A:C)
+
+Indicateur standard en science du sport pour prévenir les blessures par surmenage :
+
+- **Charge aiguë** = nombre de séries de travail complétées cette semaine
+- **Charge chronique** = moyenne hebdomadaire sur les 28 derniers jours
+- **Ratio A:C** = charge aiguë / charge chronique
+
+| Ratio | Interprétation |
+|-------|----------------|
+| < 0.8 | Sous-entraînement |
+| 0.8 – 1.3 | Zone optimale |
+| 1.3 – 1.5 | Surveiller la fatigue |
+| > 1.5 | Risque élevé — déload recommandé |
+
+Si le ratio > 1.3 **et** la forme < 3/5, MyPerf affiche une bannière **"Déload recommandé"**.
 
 ---
 
@@ -238,180 +294,149 @@ L'historique détaillé en bas du graphique montre les 8 dernières valeurs avec
 
 ### Calendrier semaine
 
-La vue principale est un calendrier à 7 jours. Navigue entre les semaines avec les flèches `←` `→`.
+Vue à 7 jours navigable avec ← →. Indicateurs par jour :
+- **Point bleu** : séance planifiée
+- **Point vert** : séance réalisée
 
-Chaque jour affiche des **indicateurs** :
-- **Point bleu** : une séance est planifiée ce jour
-- **Point vert** : une séance a été réalisée ce jour
-
-Appuie sur un jour pour voir les séances planifiées et réalisées de ce jour.
+Tap sur un jour → détail du jour. Bouton "Planifier" pour ajouter une séance.
 
 ### Planifier une séance
 
-Avec un jour sélectionné, appuie sur **"Planifier"**. Une fenêtre s'ouvre pour choisir :
-- Le **template** à utiliser
-- Le **type de bloc** (accumulation, hypertrophie, transmutation, réalisation, deload, puissance) — définit la couleur et l'intention générale de la séance
+Choisir le template et le type de bloc. La séance planifiée apparaît sur le calendrier et sur TODAY le jour J.
 
-La séance planifiée apparaît alors sur le calendrier et sera visible sur l'écran TODAY quand ce jour arrive.
+**Jour sans séance planifiée** (futur) : bouton **"Planifier une séance"** directement sur la page du jour vide.
 
-**Supprimer une séance planifiée** : appuie longuement ou glisse sur la carte dans le calendrier.
+**Supprimer** : appuie sur la corbeille sur la carte de la séance planifiée.
 
 ### Templates
 
-Les **templates** sont des modèles de séance réutilisables. Ils contiennent une liste d'exercices avec leurs paramètres par défaut.
+Modèles de séance réutilisables avec exercices ordonnés, intentions, plages de reps, RPE cible, temps de repos.
 
-**Créer un template :**
-1. Appuie sur **"+ Nouveau template"** dans la section Templates
-2. Donne-lui un nom (ex : "Push A")
-3. Ajoute des exercices dans l'ordre souhaité
-4. Pour chaque exercice : définis l'intention, les plages de reps, le RPE cible, le temps de repos
-5. Sauvegarde
+**Créer depuis une séance existante** : à la fin d'une séance, active le switch "Sauvegarder comme template" et donne un nom.
 
-Quand tu lances une séance depuis un template, les séries sont **pré-remplies avec le dernier poids utilisé** pour chaque exercice.
+**Créer manuellement** : PLAN → Templates → "+ Nouveau template".
 
 ### Macrocycles et mésocycles
 
-Un **macrocycle** est ton plan d'entraînement à grande échelle (ex : 6 mois de prépa).
-Un **mésocycle** est un bloc au sein du macrocycle (ex : 6 semaines d'hypertrophie).
+**Macrocycle** = plan à grande échelle (ex : 6 mois).
+**Mésocycle** = bloc de programmation (ex : 6 semaines d'hypertrophie).
 
-**Créer un macrocycle :**
-Appuie sur **"+ Macrocycle"**. Donne un nom et une date de début/fin.
-
-**Créer un mésocycle :**
-Depuis la timeline du macrocycle, appuie sur **"+ Mésocycle"**. Un assistant en plusieurs étapes te guide pour définir :
-1. Le **nom** et le **type de bloc** (couleur associée)
-2. La **durée** (nombre de semaines)
-3. La **date de début**
-4. Le **template** à utiliser
-5. Les **jours d'entraînement** dans la semaine (ex : Lundi, Mercredi, Vendredi)
-6. La **répartition du volume** semaine par semaine (ex : 80% → 90% → 100% → 110% → déload 60%)
-
-Une fois créé, le mésocycle génère automatiquement toutes les séances planifiées dans le calendrier. La **bannière TODAY** s'active et affiche ta semaine en cours.
+Un assistant en plusieurs étapes guide la création du mésocycle : nom, type de bloc, durée, date de début, jours d'entraînement, répartition du volume semaine par semaine. Les séances sont générées automatiquement.
 
 ---
 
 ## EXOS — Catalogue d'exercices
 
-### Consulter le catalogue
+### Consulter
 
-La liste affiche tous les exercices disponibles. Tu peux **filtrer** par :
-- Groupe musculaire (chips en haut)
-- Équipement (chips en haut)
-- Recherche textuelle
+Filtres par groupe musculaire, équipement, et recherche textuelle. Chaque exercice affiche son groupe et son équipement.
 
-Chaque exercice affiche son groupe musculaire principal et son équipement.
-
-### Créer un exercice
-
-Appuie sur le **bouton +** en bas à droite (ou sur "Créer un exercice" si la liste est vide).
-
-**Champs disponibles :**
+### Créer / Modifier
 
 | Champ | Description |
 |-------|-------------|
 | Nom | Nom de l'exercice |
 | Groupe musculaire principal | Chest / Back / Legs / Shoulders / Arms / Core |
-| Muscles secondaires | Plusieurs sélectionnables (pec upper, lats, quads…) |
+| Muscles secondaires | Sélection multiple |
 | Équipement | Barre / Haltères / Câble / Machine / Poids de corps / etc. |
 | Type | Polyarticulaire ou Isolation |
-| Unilatéral | Switch on/off |
+| Unilatéral | Toggle |
 | Prise | Pronation / Supination / Neutre / Mixte |
-| Angle de travail | Plat / Incliné / Overhead / Bas de poulie… |
-
-**Modifier un exercice** : appuie sur son nom dans la liste.
-
-**Supprimer un exercice** : bouton "Supprimer" en bas du formulaire d'édition.
+| Angle | Plat / Incliné / Overhead / Bas de poulie… |
 
 ---
 
 ## CFG — Réglages
 
-### Choisir le thème
+### Thèmes
 
-Quatre thèmes disponibles :
+| Thème | Identité visuelle |
+|-------|-----------------|
+| **Automatique** | Suit le mode clair/sombre du système |
+| **Clair** | Fond `#F5F5F7`, bleu profond `#2563EB` |
+| **Sombre** | Charcoal `#1C1C1E`, bleu iOS `#0A84FF` |
+| **OLED** | Noir pur, accents iOS — économise la batterie OLED |
+| **Néo** | Bleu-noir `#080E1C` + cyan `#00D4FF` — thème signature |
 
-| Thème | Description |
-|-------|-------------|
-| **Automatique** | Suit le mode clair/sombre du téléphone |
-| **Clair** | Fond blanc, texte sombre |
-| **Sombre** | Fond gris foncé, texte clair |
-| **OLED** | Fond noir absolu (économise la batterie sur dalles OLED) |
-| **Néo** | Bleu-noir profond + cyan électrique — thème signature de MyPerf |
+### Exporter mes données
 
-Appuie sur un thème pour l'activer instantanément.
+Bouton dans **CFG → Données**. Génère un fichier JSON complet contenant :
+- Toutes les séances avec exercices, séries, RPE, RIR, tempo
+- Toutes les mesures corporelles
+- Toutes les évaluations de forme
+
+Le fichier est partagé via le menu natif iOS/Android (AirDrop, email, cloud, clipboard…).
 
 ---
 
 ## Concepts clés
 
-### Intention d'exercice
+### MEV / MAV / MRV
 
-L'intention définit **l'objectif de l'exercice** dans la séance. Elle influence le timer de repos par défaut et permet de contextualiser tes données dans l'historique.
+Seuils de volume hebdomadaire par groupe musculaire issus de la littérature scientifique :
 
-| Intention | Profil type |
-|-----------|-------------|
-| **Puissance** | 1-3 reps, charges max, repos 4 min |
-| **Force** | 3-6 reps, haute intensité, repos 3 min |
-| **Hypertrophie** | 6-20 reps, tension métabolique, repos 90 sec |
-| **Endurance** | 20+ reps, courts repos, 60 sec |
-| **Métabolique** | Brûlure musculaire, techniques avancées, 45 sec |
+| Seuil | Définition |
+|-------|-----------|
+| **MEV** — Minimum Effective Volume | En-dessous : pas assez de stimulus pour progresser |
+| **MAV** — Maximum Adaptive Volume | Zone optimale : progression maximale |
+| **MRV** — Maximum Recoverable Volume | Au-dessus : récupération insuffisante, régression possible |
+
+Les barres de volume dans LOG sont colorées selon ces seuils. Les repères MEV et MAV sont marqués d'un trait sur chaque barre.
+
+### Intentions d'exercice
+
+| Intention | Profil type | Repos par défaut |
+|-----------|-------------|-----------------|
+| **Puissance** | 1-3 reps, charges max | 4 min |
+| **Force** | 3-6 reps, haute intensité | 3 min |
+| **Hypertrophie** | 6-20 reps, tension mécanique | 1 min 30 |
+| **Endurance** | 20+ reps, courts repos | 1 min |
+| **Métabolique** | Brûlure, techniques avancées | 45 sec |
 
 ### Types de séries
 
-- **Chauffe** — série de montée en charge. Non comptée dans le tonnage.
-- **Travail** — série principale. Compte dans le tonnage et le calcul d'e1RM.
-- **Drop** — enchaîne immédiatement après une série travail en réduisant le poids.
-- **R+P (Rest-Pause)** — courte pause intra-série (5-15 sec) puis continuation.
-- **Myoreps** — activation puis mini-séries très courtes avec repos minimaux.
+- **Chauffe** — montée en charge, non comptée dans tonnage/e1RM
+- **Travail** — série principale
+- **Drop** — enchaîne en réduisant le poids immédiatement
+- **R+P** — courte pause intra-série (5-15 sec) puis continuation
+- **Myoreps** — activation + mini-séries courtes avec repos minimaux
 
 ### RPE et RIR
 
-**RPE (Rate of Perceived Exertion)** mesure l'effort ressenti de 0 à 10 :
-- **10** = échec musculaire, impossible de faire une rep de plus
-- **9** = 1 rep en réserve
-- **8** = 2 reps en réserve
-- **7** = 3 reps en réserve
+**RPE (Rate of Perceived Exertion)** : effort de 0 à 10. RPE 8 = 2 reps en réserve.
+**RIR (Reps In Reserve)** : reps restantes. RIR 2 = RPE 8.
 
-**RIR (Reps In Reserve)** est l'inverse : le nombre de reps que tu aurais pu faire. RPE 8 = RIR 2.
-
-> Utiliser RPE/RIR permet de réguler l'intensité automatiquement selon les jours de forme, sans être esclave d'un % de RM fixe.
+> Utiliser RPE/RIR permet de réguler l'intensité selon la forme du jour, sans être esclave d'un % de RM fixe.
 
 ### Notation de tempo
 
-Le tempo est noté en 4 phases : **Excentrique - Pause bas - Concentrique - Pause haut**.
+Format : **Excentrique - Pause bas - Concentrique - Pause haut** (secondes). `X` = explosif.
 
-Chaque chiffre = durée en secondes. `X` = explosif (aussi vite que possible).
+| Exemple | Lecture |
+|---------|---------|
+| `3-1-X-0` | 3s descente, 1s pause bas, explosif, 0s haut |
+| `4-2-1-0` | 4s descente, 2s pause, 1s montée |
 
-| Notation | Signification |
-|----------|---------------|
-| `3-1-X-0` | 3 sec de descente, 1 sec pause en bas, remontée explosive, pas de pause en haut |
-| `2-0-2-0` | Tempo contrôlé à 2 secondes dans les deux phases |
-| `4-2-1-0` | Descente lente 4 sec, pause 2 sec en étirement, remontée normale |
+### e1RM estimé
 
-### e1RM (force max estimée)
+**e1RM = poids × (1 + reps ÷ 30)** (formule d'Epley)
 
-L'**e1RM** (estimated 1 Rep Max) est le poids maximal que tu pourrais théoriquement soulever en 1 rep, calculé depuis tes séries à plus haute répétition. MyPerf utilise la formule de Epley :
-
-**e1RM = poids × (1 + reps ÷ 30)**
-
-Exemple : 80 kg × 10 reps → e1RM = 80 × 1.33 = **106.7 kg**
-
-C'est un indicateur de progression objectif, indépendant du nombre de reps choisi ce jour-là.
+Ex : 80 kg × 10 reps = **106.7 kg** e1RM — indicateur de force indépendant du protocole du jour.
 
 ### Ghost (données du dernier passage)
 
-Quand tu renseignes une série, les **flèches bleues ↑** sous les champs poids et reps montrent les valeurs que tu avais faites **la dernière fois que tu as effectué cet exercice**. C'est ton point de référence pour progresser ou maintenir.
+Flèches **↑** bleues sous les champs poids et reps = valeurs de ta dernière séance sur cet exercice. Référence pour progresser ou conserver.
 
-### Types de blocs (mésocycles)
+### Types de blocs
 
-| Bloc | Couleur | Objectif |
-|------|---------|----------|
-| **Accumulation** | Vert | Construire le volume progressivement |
-| **Hypertrophie** | Bleu | Volume élevé, modéré en intensité |
-| **Transmutation** | Orange | Convertir le volume en force |
-| **Réalisation** | Rouge | Peaks de force, taper |
-| **Deload** | Gris | Récupération active (-40% de volume) |
-| **Puissance** | Jaune | Vitesse d'exécution, force-vitesse |
+| Bloc | Objectif |
+|------|----------|
+| **Accumulation** | Construire le volume progressivement |
+| **Hypertrophie** | Volume élevé, intensité modérée |
+| **Transmutation** | Convertir le volume en force |
+| **Réalisation** | Pic de force (taper) |
+| **Deload** | Récupération active (−40% volume) |
+| **Puissance** | Force-vitesse, explosivité |
 
 ---
 

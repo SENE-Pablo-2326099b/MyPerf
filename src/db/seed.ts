@@ -40,6 +40,8 @@ const TABLES_ORDERED = [
   'mesocycles',
   'macrocycles',
   'exercises',
+  'body_metrics',
+  'daily_readiness',
 ];
 
 export async function clearDatabase(): Promise<void> {

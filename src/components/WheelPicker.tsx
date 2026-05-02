@@ -27,14 +27,12 @@ export default function WheelPicker({ values, selected, onChange, formatLabel, w
   const listRef = useRef<FlatList>(null);
   const lastIndex = useRef(-1);
 
-  const initIndex = values.findIndex(v => v === selected);
-
   useEffect(() => {
-    const idx = Math.max(0, initIndex);
+    const idx = Math.max(0, values.findIndex(v => v === selected));
     setTimeout(() => {
       listRef.current?.scrollToOffset({ offset: idx * WHEEL_ITEM_H, animated: false });
     }, 0);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selected]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleScrollEnd = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const y = e.nativeEvent.contentOffset.y;
@@ -71,9 +69,9 @@ export default function WheelPicker({ values, selected, onChange, formatLabel, w
         initialNumToRender={7}
         windowSize={3}
         renderItem={({ item }) => {
-          const dist = values.indexOf(item) >= 0
-            ? Math.abs(values.indexOf(item) - Math.max(0, initIndex))
-            : 2;
+          const selectedIdx = Math.max(0, values.findIndex(v => v === selected));
+          const itemIdx = values.indexOf(item);
+          const dist = itemIdx >= 0 ? Math.abs(itemIdx - selectedIdx) : 2;
           return (
             <View style={styles.item}>
               <Text style={[styles.label, {

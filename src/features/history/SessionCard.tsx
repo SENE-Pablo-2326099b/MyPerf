@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -58,6 +59,7 @@ function SessionCard({ session }: { session: Session }) {
     : null;
 
   return (
+    <Animated.View entering={FadeInDown.springify().damping(20)}>
     <TouchableOpacity
       style={[styles.card, {
         backgroundColor: colors.surface,
@@ -133,6 +135,7 @@ function SessionCard({ session }: { session: Session }) {
         </Text>
       ) : null}
     </TouchableOpacity>
+    </Animated.View>
   );
 }
 

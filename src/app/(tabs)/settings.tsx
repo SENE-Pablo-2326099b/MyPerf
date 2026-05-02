@@ -1,6 +1,7 @@
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { clearDatabase, seedDatabase } from '@/db/seed';
+import { exportAllData } from '@/features/export/exportActions';
 import { useTheme } from '@/theme/ThemeProvider';
 import type { ThemeSetting } from '@/theme/themes';
 
@@ -92,6 +93,29 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         );
       })}
+
+      {/* Données */}
+      <Text style={[styles.section, { color: colors.textMuted, letterSpacing: isNeo ? 2 : 0.8, marginTop: 24 }]}>
+        DONNÉES
+      </Text>
+      <TouchableOpacity
+        style={[styles.row, {
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+          borderRadius: radius.md,
+        }]}
+        onPress={() => exportAllData().catch((e: Error) => Alert.alert('Erreur', e.message))}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="download-outline" size={18} color={colors.accent} />
+        <View style={styles.rowTexts}>
+          <Text style={[styles.rowLabel, { color: colors.text }]}>Exporter mes données</Text>
+          <Text style={[styles.rowSub, { color: colors.textMuted }]}>
+            JSON — séances, mensurations, forme quotidienne
+          </Text>
+        </View>
+        <Ionicons name="share-outline" size={16} color={colors.textMuted} />
+      </TouchableOpacity>
 
       {/* Dev tools — masqués en production */}
       {__DEV__ && (

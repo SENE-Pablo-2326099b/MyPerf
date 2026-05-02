@@ -133,5 +133,41 @@ export const migrations = schemaMigrations({
         }),
       ],
     },
+    {
+      toVersion: 7,
+      steps: [
+        createTable({
+          name: 'body_metrics',
+          columns: [
+            { name: 'recorded_at', type: 'number', isIndexed: true },
+            { name: 'weight_kg', type: 'number' },
+            { name: 'body_fat_pct', type: 'number', isOptional: true },
+            { name: 'chest_cm', type: 'number', isOptional: true },
+            { name: 'waist_cm', type: 'number', isOptional: true },
+            { name: 'hips_cm', type: 'number', isOptional: true },
+            { name: 'left_arm_cm', type: 'number', isOptional: true },
+            { name: 'right_arm_cm', type: 'number', isOptional: true },
+            { name: 'left_thigh_cm', type: 'number', isOptional: true },
+            { name: 'right_thigh_cm', type: 'number', isOptional: true },
+            { name: 'notes', type: 'string', isOptional: true },
+            { name: 'created_at', type: 'number' },
+            { name: 'updated_at', type: 'number' },
+          ],
+        }),
+        createTable({
+          name: 'daily_readiness',
+          columns: [
+            { name: 'recorded_at', type: 'number', isIndexed: true },
+            { name: 'sleep_quality', type: 'number' },
+            { name: 'soreness', type: 'number' },
+            { name: 'stress_level', type: 'number' },
+            { name: 'motivation', type: 'number' },
+            { name: 'notes', type: 'string', isOptional: true },
+            { name: 'created_at', type: 'number' },
+            { name: 'updated_at', type: 'number' },
+          ],
+        }),
+      ],
+    },
   ],
 });

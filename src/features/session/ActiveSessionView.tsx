@@ -3,6 +3,7 @@ import {
   Modal,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -11,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useSessionExercises } from '@/hooks/useSessionExercises';
-import { addExerciseToSession, endSession } from './sessionActions';
+import { addExerciseToSession, endSession, reorderExercises, saveSessionAsTemplate } from './sessionActions';
 import ExerciseInstanceCard from './ExerciseInstanceCard';
 import ExercisePicker from './ExercisePicker';
 import RestTimer from './RestTimer';
@@ -33,6 +34,9 @@ export default function ActiveSessionView({ session }: Props) {
   const [restIntention, setRestIntention] = useState<Intention | null>(null);
   const [showEndModal, setShowEndModal] = useState(false);
   const [sessionNotes, setSessionNotes] = useState('');
+  const [reorderMode, setReorderMode] = useState(false);
+  const [saveAsTemplate, setSaveAsTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState('');
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -53,10 +57,20 @@ export default function ActiveSessionView({ session }: Props) {
     setRestIntention(intention);
   }, []);
 
+  const handleMove = useCallback(async (fromIdx: number, toIdx: number) => {
+    const next = [...instances];
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+    await reorderExercises(next);
+  }, [instances]);
+
   const confirmEnd = useCallback(async () => {
+    if (saveAsTemplate && templateName.trim()) {
+      await saveSessionAsTemplate(templateName.trim(), instances);
+    }
     await endSession(session, sessionNotes);
     setShowEndModal(false);
-  }, [session, sessionNotes]);
+  }, [session, sessionNotes, saveAsTemplate, templateName, instances]);
 
   const completedSets = instances.length; // proxy for busyness
 
@@ -90,6 +104,17 @@ export default function ActiveSessionView({ session }: Props) {
           <Text style={[styles.headerMeta, { color: colors.textMuted }]}>
             {instances.length} exercice{instances.length !== 1 ? 's' : ''}
           </Text>
+          {instances.length > 1 && (
+            <TouchableOpacity
+              style={styles.reorderBtn}
+              onPress={() => setReorderMode(v => !v)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.reorderBtnTxt, { color: reorderMode ? colors.accent : colors.textMuted }]}>
+                {reorderMode ? '✓ Terminé' : '≡ Ordre'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* End button */}
@@ -99,7 +124,10 @@ export default function ActiveSessionView({ session }: Props) {
             borderColor: colors.danger + '50',
             borderRadius: radius.md,
           }]}
-          onPress={() => setShowEndModal(true)}
+          onPress={() => {
+            setTemplateName(session.name ?? '');
+            setShowEndModal(true);
+          }}
           activeOpacity={0.75}
         >
           <Ionicons name="stop-circle-outline" size={14} color={colors.danger} />
@@ -131,11 +159,16 @@ export default function ActiveSessionView({ session }: Props) {
             </Text>
           </View>
         ) : (
-          instances.map(instance => (
+          instances.map((instance, idx) => (
             <ExerciseInstanceCard
               key={instance.id}
               instance={instance}
               onSetComplete={handleSetComplete}
+              reorderMode={reorderMode}
+              isFirst={idx === 0}
+              isLast={idx === instances.length - 1}
+              onMoveUp={idx > 0 ? () => handleMove(idx, idx - 1) : undefined}
+              onMoveDown={idx < instances.length - 1 ? () => handleMove(idx, idx + 1) : undefined}
             />
           ))
         )}
@@ -196,6 +229,34 @@ export default function ActiveSessionView({ session }: Props) {
               multiline
               maxLength={400}
             />
+
+            {/* Save as template toggle */}
+            <View style={[styles.templateToggleRow, { borderColor: colors.border }]}>
+              <Text style={[styles.templateToggleLabel, { color: colors.text }]}>
+                Sauvegarder comme template
+              </Text>
+              <Switch
+                value={saveAsTemplate}
+                onValueChange={setSaveAsTemplate}
+                trackColor={{ false: colors.border, true: colors.accent + '80' }}
+                thumbColor={saveAsTemplate ? colors.accent : colors.textMuted}
+              />
+            </View>
+            {saveAsTemplate && (
+              <TextInput
+                style={[styles.templateNameInput, {
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                  color: colors.text,
+                  borderRadius: radius.sm,
+                }]}
+                placeholder="Nom du template…"
+                placeholderTextColor={colors.textMuted}
+                value={templateName}
+                onChangeText={setTemplateName}
+                maxLength={80}
+              />
+            )}
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -293,4 +354,22 @@ const styles = StyleSheet.create({
   modalCancelText: { fontSize: 14, fontWeight: '600' },
   modalConfirmBtn: { flex: 1, paddingVertical: 12, alignItems: 'center' },
   modalConfirmText: { fontSize: 14, fontWeight: '800' },
+
+  reorderBtn: { alignSelf: 'flex-start', paddingTop: 2 },
+  reorderBtnTxt: { fontSize: 11, fontWeight: '700' },
+
+  templateToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  templateToggleLabel: { fontSize: 14, fontWeight: '500' },
+  templateNameInput: {
+    borderWidth: 1,
+    padding: 10,
+    fontSize: 14,
+  },
 });
