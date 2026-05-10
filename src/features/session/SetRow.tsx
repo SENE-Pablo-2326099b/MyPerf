@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   StyleSheet,
@@ -50,6 +50,15 @@ function fmt(e: number, pb: number, c: number, pt: number): string {
   return `${e}-${pb}-${c === -1 ? 'X' : c}-${pt}`;
 }
 
+function rpeColor(
+  rpe: number,
+  colors: { success: string; warning: string; danger: string },
+): string {
+  if (rpe >= 9) return colors.danger;
+  if (rpe >= 8) return colors.warning;
+  return colors.success;
+}
+
 interface Props {
   set: WorkingSet;
   index: number;
@@ -59,41 +68,98 @@ interface Props {
 }
 
 function SetRow({ set, index, ghost, onCompleted, nextRef }: Props) {
-  const { theme: { colors, radius } } = useTheme();
+  const { theme: { colors } } = useTheme();
   const weightRef = useRef<TextInput>(null);
   const repsRef = useRef<TextInput>(null);
   const [editingTempo, setEditingTempo] = useState(false);
   const translateX = useSharedValue(0);
   const doneScale = useSharedValue(1);
 
+  // Refs for current values used by +/- buttons (avoids stale closures)
+  const weightValRef = useRef(set.weight);
+  const repsValRef = useRef<number | null>(set.reps);
+  useEffect(() => { weightValRef.current = set.weight; }, [set.weight]);
+  useEffect(() => { repsValRef.current = set.reps; }, [set.reps]);
+
+  // setType: local state for immediate UI feedback (React.memo + WatermelonDB
+  // same-reference mutation would block re-renders without this)
+  const [localType, setLocalType] = useState<SetType>(set.setType);
+  useEffect(() => { setLocalType(set.setType); }, [set.setType]);
+
+  // RPE: controlled state (no keyboard input, stepper only)
+  const [rpeVal, setRpeVal] = useState<number | null>(set.rpe);
+  useEffect(() => { setRpeVal(set.rpe); }, [set.rpe]);
+
   const [te, setTe] = useState(String(set.tempoEccentric));
   const [tpb, setTpb] = useState(String(set.tempoPauseBottom));
   const [tc, setTc] = useState(set.tempoConcentric === -1 ? 'X' : String(set.tempoConcentric));
   const [tpt, setTpt] = useState(String(set.tempoPauseTop));
 
+  // Formate un poids en max 2 décimales, sans zéros inutiles
+  const fmtWeight = useCallback((n: number): string => {
+    if (n <= 0) return '';
+    return parseFloat(n.toFixed(2)).toString();
+  }, []);
+
   const cycleType = useCallback(() => {
-    const idx = TYPE_CYCLE.indexOf(set.setType);
-    updateSet(set, { setType: TYPE_CYCLE[(idx + 1) % TYPE_CYCLE.length] });
-  }, [set]);
+    const idx = TYPE_CYCLE.indexOf(localType);
+    const next = TYPE_CYCLE[(idx + 1) % TYPE_CYCLE.length];
+    setLocalType(next); // mise à jour UI immédiate
+    updateSet(set, { setType: next });
+    Haptics.selectionAsync();
+  }, [localType, set]);
 
   const handleWeight = useCallback((text: string) => {
-    const n = parseFloat(text.replace(',', '.'));
-    if (!isNaN(n) && n >= 0) updateSet(set, { weight: n });
-  }, [set]);
+    // Accepte au maximum 2 chiffres après la virgule
+    const cleaned = text.replace(',', '.').replace(/[^0-9.]/g, '');
+    const n = parseFloat(cleaned);
+    const w = isNaN(n) || n < 0 ? 0 : Math.round(n * 100) / 100;
+    weightValRef.current = w;
+    weightRef.current?.setNativeProps({ text: fmtWeight(w) });
+    updateSet(set, { weight: w });
+  }, [set, fmtWeight]);
+
+  const adjustWeight = useCallback((delta: number) => {
+    const next = Math.max(0, Math.round((weightValRef.current + delta) * 4) / 4);
+    weightValRef.current = next;
+    weightRef.current?.setNativeProps({ text: fmtWeight(next) });
+    updateSet(set, { weight: next });
+    Haptics.selectionAsync();
+  }, [set, fmtWeight]);
 
   const handleReps = useCallback((text: string) => {
-    const n = parseInt(text, 10);
-    updateSet(set, { reps: isNaN(n) ? null : n });
+    // Reps = entier uniquement, pas de décimales
+    const clean = text.replace(/[^0-9]/g, '');
+    const n = parseInt(clean, 10);
+    const r = isNaN(n) || n <= 0 ? null : n;
+    repsValRef.current = r;
+    repsRef.current?.setNativeProps({ text: r !== null ? String(r) : '' });
+    updateSet(set, { reps: r });
   }, [set]);
 
-  const handleRpe = useCallback((text: string) => {
-    const n = parseFloat(text.replace(',', '.'));
-    updateSet(set, { rpe: isNaN(n) || !text.trim() ? null : Math.min(10, Math.max(0, n)) });
+  const adjustReps = useCallback((delta: number) => {
+    const next = Math.max(0, (repsValRef.current ?? 0) + delta);
+    const r = next === 0 ? null : next;
+    repsValRef.current = r;
+    repsRef.current?.setNativeProps({ text: r !== null ? String(r) : '' });
+    updateSet(set, { reps: r });
+    Haptics.selectionAsync();
   }, [set]);
 
-  const handleRir = useCallback((text: string) => {
-    const n = parseInt(text, 10);
-    updateSet(set, { rir: isNaN(n) || !text.trim() ? null : Math.min(10, Math.max(0, n)) });
+  const adjustRpe = useCallback((delta: number) => {
+    setRpeVal(prev => {
+      const current = prev ?? 7;
+      const next = Math.min(10, Math.max(5, Math.round((current + delta) * 2) / 2));
+      updateSet(set, { rpe: next });
+      Haptics.selectionAsync();
+      return next;
+    });
+  }, [set]);
+
+  const clearRpe = useCallback(() => {
+    setRpeVal(null);
+    updateSet(set, { rpe: null });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [set]);
 
   const commitTempo = useCallback(() => {
@@ -157,15 +223,14 @@ function SetRow({ set, index, ghost, onCompleted, nextRef }: Props) {
   const rowStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
   const doneStyle = useAnimatedStyle(() => ({ transform: [{ scale: doneScale.value }] }));
 
-  const typeColor = TYPE_COLORS[set.setType] ?? colors.accent;
+  const typeColor = TYPE_COLORS[localType] ?? colors.accent;
   const tempoStr = fmt(set.tempoEccentric, set.tempoPauseBottom, set.tempoConcentric, set.tempoPauseTop);
-  const showGhostWeight = ghost && ghost.weight > 0;
-  const showGhostReps = ghost && ghost.reps != null;
-  const numColor = set.completed ? colors.success : colors.text;
+  const isDone = set.completed;
+  const numColor = isDone ? colors.success : colors.text;
 
   return (
     <View style={[styles.wrapper, { borderBottomColor: colors.border }]}>
-      {/* ── Swipe-reveal delete ── */}
+      {/* ── Delete reveal ── */}
       <View style={[styles.deleteReveal, { backgroundColor: colors.danger }]}>
         <Ionicons name="trash-outline" size={20} color="#fff" />
         <Text style={styles.deleteRevealText}>Retirer</Text>
@@ -175,152 +240,210 @@ function SetRow({ set, index, ghost, onCompleted, nextRef }: Props) {
         <Animated.View
           style={[
             styles.slide,
-            { backgroundColor: set.completed ? colors.success + '12' : colors.surface },
+            { backgroundColor: isDone ? colors.success + '0F' : colors.surface },
             rowStyle,
           ]}
         >
-          {/* ── Main row ── */}
+          {/* ══ Ligne principale : # | poids | reps | ✓ ══ */}
           <View style={styles.mainRow}>
-            {/* Index */}
             <Text style={[styles.idx, { color: colors.textMuted }]}>{index + 1}</Text>
 
-            {/* Type badge — tap to cycle */}
-            <TouchableOpacity
-              style={[styles.typeBadge, { backgroundColor: typeColor + '1A', borderColor: typeColor + '60' }]}
-              onPress={cycleType}
-              hitSlop={8}
-            >
-              <Text style={[styles.typeTxt, { color: typeColor }]}>{TYPE_LABELS[set.setType]}</Text>
-            </TouchableOpacity>
-
-            {/* Weight */}
-            <View style={styles.numBlock}>
-              <View style={styles.numInner}>
-                <TextInput
-                  ref={weightRef}
-                  style={[styles.bigNum, { color: numColor, backgroundColor: colors.background }]}
-                  defaultValue={set.weight > 0 ? String(set.weight) : ''}
-                  onEndEditing={e => handleWeight(e.nativeEvent.text)}
-                  keyboardType="decimal-pad"
-                  placeholder="—"
-                  placeholderTextColor={colors.textMuted}
-                  selectTextOnFocus
-                  returnKeyType="next"
-                  onSubmitEditing={() => repsRef.current?.focus()}
-                />
-                <Text style={[styles.unit, { color: colors.textMuted }]}>kg</Text>
+            {/* Stepper poids */}
+            <View style={styles.stepper}>
+              <TouchableOpacity
+                style={[styles.stepBtn, { backgroundColor: colors.background, borderColor: colors.border }]}
+                onPress={() => adjustWeight(-2.5)}
+                activeOpacity={0.6}
+              >
+                <Ionicons name="remove" size={15} color={colors.textMuted} />
+              </TouchableOpacity>
+              <View style={styles.inputCol}>
+                <View style={[styles.inputBox, {
+                  backgroundColor: colors.background,
+                  borderColor: isDone ? colors.success + '60' : colors.border,
+                }]}>
+                  <TextInput
+                    ref={weightRef}
+                    style={[styles.numInput, { color: numColor }]}
+                    defaultValue={fmtWeight(set.weight)}
+                    onEndEditing={e => handleWeight(e.nativeEvent.text)}
+                    keyboardType="decimal-pad"
+                    placeholder="0"
+                    placeholderTextColor={colors.textMuted}
+                    selectTextOnFocus
+                    returnKeyType="next"
+                    onSubmitEditing={() => repsRef.current?.focus()}
+                  />
+                  <Text style={[styles.unitLbl, { color: colors.textMuted }]}>kg</Text>
+                </View>
+                {ghost && ghost.weight > 0 && (
+                  <Text style={[styles.ghost, { color: colors.accent }]}>↑ {ghost.weight}</Text>
+                )}
               </View>
-              {showGhostWeight && (
-                <Text style={[styles.ghost, { color: colors.accent }]}>↑ {ghost!.weight}</Text>
-              )}
+              <TouchableOpacity
+                style={[styles.stepBtn, { backgroundColor: colors.background, borderColor: colors.border }]}
+                onPress={() => adjustWeight(+2.5)}
+                activeOpacity={0.6}
+              >
+                <Ionicons name="add" size={15} color={colors.textMuted} />
+              </TouchableOpacity>
             </View>
 
-            {/* Reps */}
-            <View style={styles.numBlock}>
-              <View style={styles.numInner}>
-                <TextInput
-                  ref={repsRef}
-                  style={[styles.bigNum, styles.repsNum, { color: numColor, backgroundColor: colors.background }]}
-                  defaultValue={set.reps != null ? String(set.reps) : ''}
-                  onEndEditing={e => handleReps(e.nativeEvent.text)}
-                  keyboardType="number-pad"
-                  placeholder="—"
-                  placeholderTextColor={colors.textMuted}
-                  selectTextOnFocus
-                  returnKeyType="done"
-                  onSubmitEditing={() => nextRef?.current?.focus()}
-                />
-                <Text style={[styles.unit, { color: colors.textMuted }]}>×</Text>
+            {/* Stepper reps */}
+            <View style={[styles.stepper, styles.stepperReps]}>
+              <TouchableOpacity
+                style={[styles.stepBtn, { backgroundColor: colors.background, borderColor: colors.border }]}
+                onPress={() => adjustReps(-1)}
+                activeOpacity={0.6}
+              >
+                <Ionicons name="remove" size={15} color={colors.textMuted} />
+              </TouchableOpacity>
+              <View style={styles.inputCol}>
+                <View style={[styles.inputBox, {
+                  backgroundColor: colors.background,
+                  borderColor: isDone ? colors.success + '60' : colors.border,
+                }]}>
+                  <TextInput
+                    ref={repsRef}
+                    style={[styles.numInput, styles.repsInput, { color: numColor }]}
+                    defaultValue={set.reps != null ? String(set.reps) : ''}
+                    onChangeText={text => {
+                      const clean = text.replace(/[^0-9]/g, '');
+                      if (clean !== text) repsRef.current?.setNativeProps({ text: clean });
+                    }}
+                    onEndEditing={e => handleReps(e.nativeEvent.text)}
+                    keyboardType="number-pad"
+                    placeholder="0"
+                    placeholderTextColor={colors.textMuted}
+                    selectTextOnFocus
+                    returnKeyType="done"
+                    onSubmitEditing={() => nextRef?.current?.focus()}
+                  />
+                  <Text style={[styles.unitLbl, { color: colors.textMuted }]}>×</Text>
+                </View>
+                {ghost && ghost.reps != null && (
+                  <Text style={[styles.ghost, { color: colors.accent }]}>↑ {ghost.reps}</Text>
+                )}
               </View>
-              {showGhostReps && (
-                <Text style={[styles.ghost, { color: colors.accent }]}>↑ {ghost!.reps}</Text>
-              )}
+              <TouchableOpacity
+                style={[styles.stepBtn, { backgroundColor: colors.background, borderColor: colors.border }]}
+                onPress={() => adjustReps(+1)}
+                activeOpacity={0.6}
+              >
+                <Ionicons name="add" size={15} color={colors.textMuted} />
+              </TouchableOpacity>
             </View>
 
-            {/* Complete button */}
+            {/* Bouton valider */}
             <Animated.View style={doneStyle}>
               <TouchableOpacity
                 style={[
                   styles.doneBtn,
                   {
-                    backgroundColor: set.completed ? colors.success : 'transparent',
-                    borderColor: set.completed ? colors.success : colors.border,
+                    backgroundColor: isDone ? colors.success : 'transparent',
+                    borderColor: isDone ? colors.success : colors.border,
                   },
                 ]}
                 onPress={toggleComplete}
-                hitSlop={8}
+                hitSlop={6}
               >
                 <Ionicons
-                  name={set.completed ? 'checkmark' : 'ellipse-outline'}
-                  size={20}
-                  color={set.completed ? '#fff' : colors.border}
+                  name={isDone ? 'checkmark' : 'ellipse-outline'}
+                  size={22}
+                  color={isDone ? '#fff' : colors.border}
                 />
               </TouchableOpacity>
             </Animated.View>
           </View>
 
-          {/* ── Detail row : RPE / RIR / Tempo ── */}
+          {/* ══ Méta-ligne : type | RPE | tempo ══ */}
           {!editingTempo ? (
-            <View style={styles.detailRow}>
-              <View style={[styles.detailChip, { borderColor: colors.border, backgroundColor: colors.background }]}>
-                <Text style={[styles.detailLbl, { color: colors.textMuted }]}>RPE</Text>
-                <TextInput
-                  style={[styles.detailNum, { color: colors.text }]}
-                  defaultValue={set.rpe != null ? String(set.rpe) : ''}
-                  onEndEditing={e => handleRpe(e.nativeEvent.text)}
-                  keyboardType="decimal-pad"
-                  placeholder="—"
-                  placeholderTextColor={colors.textMuted}
-                  selectTextOnFocus
-                />
-              </View>
-              <View style={[styles.detailChip, { borderColor: colors.border, backgroundColor: colors.background }]}>
-                <Text style={[styles.detailLbl, { color: colors.textMuted }]}>RIR</Text>
-                <TextInput
-                  style={[styles.detailNum, { color: colors.text }]}
-                  defaultValue={set.rir != null ? String(set.rir) : ''}
-                  onEndEditing={e => handleRir(e.nativeEvent.text)}
-                  keyboardType="number-pad"
-                  placeholder="—"
-                  placeholderTextColor={colors.textMuted}
-                  selectTextOnFocus
-                />
-              </View>
+            <View style={[styles.metaRow, { borderTopColor: colors.border }]}>
+              {/* Badge type — tap to cycle */}
               <TouchableOpacity
-                style={[styles.tempoChip, { borderColor: colors.border, backgroundColor: colors.background }]}
-                onPress={openTempoEditor}
-                hitSlop={8}
+                style={[styles.typeBadge, { backgroundColor: typeColor + '18', borderColor: typeColor + '55' }]}
+                onPress={cycleType}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons name="timer-outline" size={11} color={colors.textMuted} />
-                <Text style={[styles.tempoChipTxt, { color: tempoStr === '—' ? colors.textMuted : colors.accent }]}>
+                <Text style={[styles.typeTxt, { color: typeColor }]}>{TYPE_LABELS[localType]}</Text>
+                <Ionicons name="swap-horizontal-outline" size={10} color={typeColor + '99'} />
+              </TouchableOpacity>
+
+              <View style={styles.metaSpacer} />
+
+              {/* Stepper RPE */}
+              <View style={[styles.rpeBlock, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <Text style={[styles.rpeLbl, { color: colors.textMuted }]}>RPE</Text>
+                <TouchableOpacity onPress={() => adjustRpe(-0.5)} hitSlop={8} style={styles.rpeAdjHit}>
+                  <Ionicons name="remove" size={12} color={colors.textMuted} />
+                </TouchableOpacity>
+                <Text style={[styles.rpeVal, {
+                  color: rpeVal !== null ? rpeColor(rpeVal, colors) : colors.textMuted + '70',
+                }]}>
+                  {rpeVal !== null ? String(rpeVal) : '—'}
+                </Text>
+                {rpeVal !== null && (
+                  <TouchableOpacity onPress={clearRpe} hitSlop={10} style={styles.rpeClear}>
+                    <Ionicons name="close" size={9} color={colors.textMuted} />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity onPress={() => adjustRpe(+0.5)} hitSlop={8} style={styles.rpeAdjHit}>
+                  <Ionicons name="add" size={12} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Bouton tempo */}
+              <TouchableOpacity
+                style={[styles.tempoBtn, { backgroundColor: colors.background, borderColor: colors.border }]}
+                onPress={openTempoEditor}
+                hitSlop={6}
+              >
+                <Ionicons
+                  name="timer-outline"
+                  size={12}
+                  color={tempoStr !== '—' ? colors.accent : colors.textMuted}
+                />
+                <Text style={[styles.tempoTxt, {
+                  color: tempoStr !== '—' ? colors.accent : colors.textMuted,
+                }]}>
                   {tempoStr}
                 </Text>
               </TouchableOpacity>
             </View>
           ) : (
+            /* ── Éditeur de tempo ── */
             <View style={[styles.tempoEditor, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
               {(['Ecc', 'Bas', 'Con', 'Haut'] as const).map((lbl, i) => {
                 const vals = [te, tpb, tc, tpt];
                 const setters = [setTe, setTpb, setTc, setTpt];
                 return (
                   <React.Fragment key={lbl}>
-                    {i > 0 && <Text style={[styles.tempoDash, { color: colors.textMuted }]}>-</Text>}
-                    <Text style={[styles.tempoEditorLbl, { color: colors.textMuted }]}>{lbl}</Text>
-                    <TextInput
-                      style={[styles.tempoInput, { color: colors.text, borderColor: colors.border }]}
-                      value={vals[i]}
-                      onChangeText={setters[i]}
-                      keyboardType={lbl === 'Con' ? 'default' : 'number-pad'}
-                      placeholder={lbl === 'Con' ? 'X' : '0'}
-                      placeholderTextColor={colors.textMuted}
-                      maxLength={2}
-                      selectTextOnFocus
-                    />
+                    {i > 0 && <Text style={[styles.tempoDash, { color: colors.textMuted }]}>—</Text>}
+                    <View style={styles.tempoGroup}>
+                      <Text style={[styles.tempoLbl, { color: colors.textMuted }]}>{lbl}</Text>
+                      <TextInput
+                        style={[styles.tempoInput, {
+                          color: colors.text,
+                          borderColor: colors.border,
+                          backgroundColor: colors.surface,
+                        }]}
+                        value={vals[i]}
+                        onChangeText={setters[i]}
+                        keyboardType={lbl === 'Con' ? 'default' : 'number-pad'}
+                        placeholder={lbl === 'Con' ? 'X' : '0'}
+                        placeholderTextColor={colors.textMuted}
+                        maxLength={2}
+                        selectTextOnFocus
+                      />
+                    </View>
                   </React.Fragment>
                 );
               })}
-              <TouchableOpacity style={[styles.tempoOk, { backgroundColor: colors.accent }]} onPress={commitTempo}>
-                <Ionicons name="checkmark" size={14} color="#000" />
+              <TouchableOpacity
+                style={[styles.tempoOk, { backgroundColor: colors.accent }]}
+                onPress={commitTempo}
+              >
+                <Ionicons name="checkmark" size={15} color="#000" />
               </TouchableOpacity>
             </View>
           )}
@@ -344,127 +467,190 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   deleteRevealText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  slide: {},
 
-  slide: { /* translating layer */ },
-
+  // ── Ligne principale ──
   mainRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 4,
-    gap: 8,
-  },
-
-  idx: { width: 18, fontSize: 13, fontWeight: '700', textAlign: 'center' },
-
-  typeBadge: {
-    minWidth: 72,
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 6,
+    gap: 6,
   },
-  typeTxt: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+  idx: {
+    width: 20,
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
 
-  numBlock: { flex: 1, alignItems: 'center', gap: 3 },
-  numInner: { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
-  bigNum: {
+  stepper: {
+    flex: 1.3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  stepperReps: {
+    flex: 1,
+  },
+  stepBtn: {
+    width: 28,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  inputCol: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  inputBox: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
+    borderRadius: 10,
+    borderWidth: 1.5,
+    paddingHorizontal: 5,
+    paddingVertical: 4,
+    gap: 2,
+    minHeight: 48,
+  },
+  numInput: {
     fontSize: 22,
     fontWeight: '800',
     textAlign: 'center',
-    minWidth: 54,
-    paddingHorizontal: 6,
-    paddingVertical: 5,
-    borderRadius: 8,
+    minWidth: 36,
+    padding: 0,
     fontVariant: ['tabular-nums'],
   },
-  repsNum: { minWidth: 40 },
-  unit: { fontSize: 13, fontWeight: '600' },
+  repsInput: {
+    minWidth: 28,
+  },
+  unitLbl: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
   ghost: {
-    fontSize: 11,
+    fontSize: 10,
+    fontWeight: '600',
     fontVariant: ['tabular-nums'],
-    letterSpacing: 0.3,
-    opacity: 0.65,
+    opacity: 0.75,
   },
 
   doneBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
-  detailRow: {
+  // ── Méta-ligne ──
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 42,
-    paddingRight: 14,
-    paddingBottom: 10,
-    paddingTop: 2,
+    paddingHorizontal: 10,
+    paddingTop: 5,
+    paddingBottom: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
     gap: 6,
   },
-  detailChip: {
+  metaSpacer: { flex: 1 },
+
+  typeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
   },
-  detailLbl: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
-  detailNum: {
-    fontSize: 13,
-    fontWeight: '700',
+  typeTxt: { fontSize: 11, fontWeight: '800' },
+
+  rpeBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 3,
+  },
+  rpeLbl: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  rpeAdjHit: { width: 18, alignItems: 'center' },
+  rpeVal: {
+    fontSize: 14,
+    fontWeight: '800',
+    minWidth: 24,
     textAlign: 'center',
-    minWidth: 26,
-    padding: 0,
     fontVariant: ['tabular-nums'],
   },
-  tempoChip: {
+  rpeClear: { width: 14, alignItems: 'center' },
+
+  tempoBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
   },
-  tempoChipTxt: { fontSize: 11, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  tempoTxt: { fontSize: 11, fontWeight: '700', fontVariant: ['tabular-nums'] },
 
+  // ── Éditeur tempo ──
   tempoEditor: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    gap: 5,
+    gap: 4,
     borderTopWidth: StyleSheet.hairlineWidth,
-    flexWrap: 'wrap',
   },
-  tempoEditorLbl: { fontSize: 10, fontWeight: '700' },
+  tempoGroup: { alignItems: 'center', gap: 2 },
+  tempoLbl: { fontSize: 9, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
   tempoInput: {
-    width: 32,
+    width: 36,
     borderRadius: 6,
     borderWidth: 1,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
-    fontSize: 13,
+    paddingHorizontal: 2,
+    paddingVertical: 6,
+    fontSize: 14,
     fontWeight: '700',
     textAlign: 'center',
   },
-  tempoDash: { fontSize: 13, fontWeight: '600' },
+  tempoDash: { fontSize: 12, fontWeight: '600', marginTop: 12 },
   tempoOk: {
-    marginLeft: 4,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    marginLeft: 6,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    alignSelf: 'flex-end',
+    marginBottom: 2,
   },
 });
 
-export default React.memo(SetRow);
+// Comparaison explicite des champs du modèle WatermelonDB — le même objet peut
+// être muté en place sans changer de référence, ce qui tromperait le memo par défaut.
+export default React.memo(SetRow, (prev, next) => (
+  prev.index === next.index &&
+  prev.ghost === next.ghost &&
+  prev.set.id === next.set.id &&
+  prev.set.setType === next.set.setType &&
+  prev.set.weight === next.set.weight &&
+  prev.set.reps === next.set.reps &&
+  prev.set.rpe === next.set.rpe &&
+  prev.set.completed === next.set.completed &&
+  prev.set.tempoEccentric === next.set.tempoEccentric &&
+  prev.set.tempoConcentric === next.set.tempoConcentric &&
+  prev.set.tempoPauseBottom === next.set.tempoPauseBottom &&
+  prev.set.tempoPauseTop === next.set.tempoPauseTop
+));

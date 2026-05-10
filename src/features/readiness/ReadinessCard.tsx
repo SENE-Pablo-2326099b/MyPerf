@@ -98,11 +98,13 @@ export default function ReadinessCard() {
   const entries = useDailyReadiness();
   const load = useTrainingLoad();
   const [showCheckIn, setShowCheckIn] = useState(false);
+  const [showAllEntries, setShowAllEntries] = useState(false);
 
   const today = new Date();
   const todayEntry = entries.find(e => isSameDay(e.recordedAt, today));
   const todayScore = todayEntry ? readinessScore(todayEntry) : null;
   const last7 = entries.slice(0, 7);
+  const displayedEntries = showAllEntries ? entries : last7;
 
   // Deload suggestion
   const showDeloadWarning =
@@ -155,12 +157,23 @@ export default function ReadinessCard() {
 
       {/* Section 1 — Readiness history */}
       <View style={styles.section}>
-        <Text style={[styles.sectionLabel, { color: colors.textMuted, letterSpacing: isNeo ? 1 : 0 }]}>
-          {isNeo ? 'FORME DES 7 DERNIERS JOURS' : 'Forme des 7 derniers jours'}
-        </Text>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionLabel, { color: colors.textMuted, letterSpacing: isNeo ? 1 : 0 }]}>
+            {showAllEntries
+              ? (isNeo ? 'HISTORIQUE COMPLET' : 'Historique complet')
+              : (isNeo ? 'FORME DES 7 DERNIERS JOURS' : 'Forme des 7 derniers jours')}
+          </Text>
+          {entries.length > 7 && (
+            <TouchableOpacity onPress={() => setShowAllEntries(v => !v)} hitSlop={8}>
+              <Text style={[styles.toggleAllText, { color: colors.accent }]}>
+                {showAllEntries ? 'Résumé' : `Tout (${entries.length})`}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
-        {last7.length > 0 ? (
-          <ReadinessDotTimeline entries={last7} />
+        {displayedEntries.length > 0 ? (
+          <ReadinessDotTimeline entries={displayedEntries} />
         ) : (
           <View style={styles.noDataRow}>
             <Text style={[styles.noDataText, { color: colors.textMuted }]}>Aucune donnée</Text>
@@ -263,6 +276,8 @@ const styles = StyleSheet.create({
   },
   deloadText: { flex: 1, fontSize: 12, fontWeight: '600', lineHeight: 18 },
   section: { gap: 10 },
+  sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  toggleAllText: { fontSize: 11, fontWeight: '700' },
   sectionLabel: { fontSize: 10, fontWeight: '700' },
   timeline: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   timelineDot: { alignItems: 'center', gap: 3, minWidth: 36 },

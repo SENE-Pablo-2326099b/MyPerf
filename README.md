@@ -249,7 +249,48 @@ Un seed complet est disponible pour tester toutes les fonctionnalités :
 
 ## Prochains chantiers
 
+### 🔴 Bugs à corriger
+
+- [ ] **ExercisePicker déformé en séance** — Le module de recherche d'exercices (`ExercisePicker`) se déforme visuellement anormalement lorsqu'on l'ouvre pour ajouter un exercice en cours de séance (probablement un conflit de hauteur avec le clavier ou la ScrollView parente).
+
+- [ ] **Bodymap : zones tactiles infiables** — Les zones cliquables sur la carte musculaire SVG ne répondent qu'une fois sur dix. Les `<G>` SVG n'ont pas de zone de hit explicite ; les paths anatomiques laissent de larges zones vides entre eux. → Ajouter un `<Rect>` ou `<Path>` transparent `fill="transparent"` couvrant la bounding-box de chaque groupe musculaire comme cible de tap, superposé aux paths visuels.
+
+- [ ] **Création mésocycle — checkbox "Aucun" se coche par erreur** — Dans le wizard `CreateMesocycleWizard`, quand on sélectionne un macrocycle existant pour y rattacher le bloc, la case "Aucun" reste ou passe également cochée. Probablement un problème de state non remis à zéro ou de logique de sélection radio.
+
+- [ ] **Flèche inutile sur les cartes exercice** — Dans la liste d'exercices (`ExerciseCard`), un chevron `›` est affiché à droite mais ne déclenche aucune action. Soit relier à une page de détail/édition de l'exercice, soit supprimer l'icône.
+
+---
+
+### 🟠 Manques fonctionnels importants
+
+- [ ] **Quitter une séance sans enregistrer** — Si l'utilisateur démarre une séance par erreur, il n'existe aucun moyen de l'annuler / la supprimer proprement. Ajouter un bouton "Annuler la séance" dans `ActiveSessionView` (avec confirmation `Alert`) qui supprime la session et toutes ses instances/séries en DB.
+
+- [ ] **Calendrier : vue mois complet** — L'onglet Planning affiche uniquement la semaine courante avec navigation semaine par semaine. Passer à un calendrier plein mois (grille 7×5) avec indicateurs visuels par jour (planifié/réalisé) et navigation mois par mois.
+
+- [ ] **Ajouter / supprimer des microcycles dans un bloc existant** — La modification des semaines est possible, mais il est impossible d'ajouter une nouvelle semaine ou d'en supprimer une une fois le bloc enregistré. Ajouter des boutons "+ Semaine" / "Supprimer" dans l'éditeur de microcycles.
+
+- [ ] **Créer un template directement à la création du bloc** — Actuellement, le wizard `CreateMesocycleWizard` propose uniquement de sélectionner un template existant (Push A, Pull A…). Ajouter la possibilité de créer un nouveau template inline (nom + liste d'exercices + cibles) sans quitter le wizard.
+
+- [ ] **Historique complet Forme & Charges** — Le `ReadinessCard` n'affiche que les 7 derniers jours. Ajouter un lien / écran dédié pour consulter l'intégralité des entrées de forme quotidienne et l'évolution du ratio A:C sur plusieurs semaines (idéalement graphique).
+
+---
+
+### 🟡 Améliorations UX / Apparence
+
+- [ ] **Bodymap : dégradé de couleur progressif** — Remplacer les 4 couleurs discrètes (gris / vert / jaune / rouge) par un dégradé continu interpolé entre `border` (0 séries) et `success → warning → danger` proportionnellement au volume. Utiliser une interpolation HSL ou une fonction `lerpColor`.
+
+- [ ] **Bodymap : statistiques détaillées au clic** — Le panneau affiché lors du clic sur un muscle indique uniquement la zone MAV. L'enrichir avec : nombre exact de séries / objectif MEV-MAV-MRV, fréquence sur 4 semaines, dernier exercice ciblé, suggestion d'action si sous MEV.
+
+- [ ] **Records personnels : refonte utilité + apparence** — La section PR dans l'onglet historique liste les records bruts mais manque de hiérarchie et de lisibilité. Revoir : afficher le `e1RM` comme métrique principale (plus pertinent pour comparer des séries de reps différentes), ajouter la date du record, une progression sparkline sur les 8 dernières semaines, et grouper par muscle plutôt que par ordre alphabétique.
+
+- [ ] **Mensurations : libellés des parties du corps** — Dans le formulaire `BodyMetricModal` et dans la grille de mensurations de `body.tsx`, les mesures ne précisent pas clairement quelle partie exacte du corps est mesurée (ex. "Bras" sans préciser "biceps contracté, pic du muscle" ou "Taille" sans préciser "au nombril"). Ajouter des sous-libellés/hints visuels ou icônes anatomiques pour chaque champ.
+
+---
+
+### ⚪ Backlog (plus bas niveau)
+
 - [ ] Notifications de rappel de séance planifiée (expo-notifications)
 - [ ] Comparaison de deux séances côte-à-côte
 - [ ] Landmarks MEV/MAV/MRV personnalisables par utilisateur
 - [ ] Onboarding premier lancement
+- [ ] Unités kg / lbs (préférence dans les Réglages)

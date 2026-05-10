@@ -1,36 +1,70 @@
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeProvider';
 import { usePRs } from '@/hooks/usePRs';
 import type { PR } from '@/hooks/usePRs';
 
+const MUSCLE_FR: Record<string, string> = {
+  chest: 'Pectoraux',
+  back: 'Dos',
+  legs: 'Jambes',
+  shoulders: 'Épaules',
+  arms: 'Bras',
+  core: 'Abdominaux',
+};
+
+const MUSCLE_ORDER = ['chest', 'back', 'shoulders', 'legs', 'arms', 'core'];
+
+const MONTH_SHORT = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+
+function fmtDate(d: Date): string {
+  return `${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function fmtWeight(w: number): string {
+  return w >= 1000 ? `${(w / 1000).toFixed(1)} t` : `${Math.round(w)} kg`;
+}
+
 function PRRow({ pr }: { pr: PR }) {
-  const { theme: { colors } } = useTheme();
+  const { theme: { colors, radius } } = useTheme();
+  const e1rm = Math.round(pr.maxE1RM);
 
   return (
     <View style={[styles.row, { borderTopColor: colors.border }]}>
-      <Text style={[styles.exoName, { color: colors.text }]} numberOfLines={1}>
-        {pr.exerciseName}
-      </Text>
-      <View style={styles.chips}>
-        <View style={[styles.chip, { backgroundColor: colors.accent + '15', borderColor: colors.accent + '30' }]}>
-          <Ionicons name="barbell-outline" size={10} color={colors.accent} />
-          <Text style={[styles.chipTxt, { color: colors.accent }]}>
-            {pr.maxWeight >= 1000
-              ? `${(pr.maxWeight / 1000).toFixed(1)} t`
-              : `${Math.round(pr.maxWeight)} kg`}
-          </Text>
-        </View>
-        <View style={[styles.chip, { backgroundColor: colors.success + '15', borderColor: colors.success + '30' }]}>
-          <Ionicons name="trending-up-outline" size={10} color={colors.success} />
-          <Text style={[styles.chipTxt, { color: colors.success }]}>
-            {Math.round(pr.maxE1RM)} kg
-          </Text>
-        </View>
-        <Text style={[styles.count, { color: colors.textMuted }]}>
-          {pr.sessionCount} séance{pr.sessionCount > 1 ? 's' : ''}
+      <View style={styles.rowLeft}>
+        <Text style={[styles.exoName, { color: colors.text }]} numberOfLines={1}>
+          {pr.exerciseName}
+        </Text>
+        <Text style={[styles.rowMeta, { color: colors.textMuted }]}>
+          {fmtDate(pr.lastDate)} · {pr.sessionCount} séance{pr.sessionCount > 1 ? 's' : ''}
         </Text>
       </View>
+
+      <View style={styles.rowRight}>
+        {/* e1RM — primary metric */}
+        <View style={[styles.e1rmBadge, { backgroundColor: colors.accent + '15', borderColor: colors.accent + '30', borderRadius: radius.sm }]}>
+          <Ionicons name="trending-up-outline" size={11} color={colors.accent} />
+          <Text style={[styles.e1rmText, { color: colors.accent }]}>{e1rm} kg</Text>
+          <Text style={[styles.e1rmLabel, { color: colors.accent + '90' }]}>e1RM</Text>
+        </View>
+        {/* Max weight — secondary */}
+        <Text style={[styles.maxWeight, { color: colors.textMuted }]}>
+          {fmtWeight(pr.maxWeight)} max
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function MuscleSection({ muscle, prs }: { muscle: string; prs: PR[] }) {
+  const { theme: { colors } } = useTheme();
+  const label = MUSCLE_FR[muscle] ?? muscle;
+
+  return (
+    <View style={styles.section}>
+      <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{label.toUpperCase()}</Text>
+      {prs.map(pr => <PRRow key={pr.exerciseId} pr={pr} />)}
     </View>
   );
 }
@@ -40,6 +74,24 @@ export default function PRList() {
   const prs = usePRs();
   const isNeo = mode === 'neo';
 
+  const grouped = useMemo(() => {
+    const map: Record<string, PR[]> = {};
+    for (const pr of prs) {
+      const g = pr.muscleGroup ?? 'other';
+      if (!map[g]) map[g] = [];
+      map[g].push(pr);
+    }
+    // Sort groups by MUSCLE_ORDER, others at end
+    return Object.entries(map).sort(([a], [b]) => {
+      const ia = MUSCLE_ORDER.indexOf(a);
+      const ib = MUSCLE_ORDER.indexOf(b);
+      if (ia === -1 && ib === -1) return a.localeCompare(b);
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
+  }, [prs]);
+
   return (
     <View style={[styles.card, {
       backgroundColor: colors.surface,
@@ -48,7 +100,6 @@ export default function PRList() {
       borderLeftWidth: isNeo ? 2 : 0,
       borderLeftColor: colors.accent,
     }]}>
-      {/* Header */}
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderLeft}>
           <Ionicons name="trophy-outline" size={14} color={colors.accent} />
@@ -68,12 +119,11 @@ export default function PRList() {
           Complète des séances pour voir tes records
         </Text>
       ) : (
-        <FlatList
-          data={prs}
-          keyExtractor={item => item.exerciseId}
-          renderItem={({ item }) => <PRRow pr={item} />}
-          scrollEnabled={false}
-        />
+        <View style={styles.groupsWrap}>
+          {grouped.map(([muscle, list]) => (
+            <MuscleSection key={muscle} muscle={muscle} prs={list} />
+          ))}
+        </View>
       )}
     </View>
   );
@@ -101,32 +151,32 @@ const styles = StyleSheet.create({
   },
   badgeTxt: { fontSize: 11, fontWeight: '800' },
   emptyText: { fontSize: 13, textAlign: 'center', paddingVertical: 8 },
+
+  groupsWrap: { gap: 16 },
+  section: { gap: 0 },
+  sectionTitle: { fontSize: 9, fontWeight: '800', letterSpacing: 1, marginBottom: 4 },
+
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 9,
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: 8,
   },
-  exoName: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  chips: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  chip: {
+  rowLeft: { flex: 1, gap: 2 },
+  exoName: { fontSize: 13, fontWeight: '600' },
+  rowMeta: { fontSize: 10 },
+
+  rowRight: { alignItems: 'flex-end', gap: 3 },
+  e1rmBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 7,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderWidth: 1,
   },
-  chipTxt: { fontSize: 11, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  count: { fontSize: 11, fontVariant: ['tabular-nums'] },
+  e1rmText: { fontSize: 13, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  e1rmLabel: { fontSize: 9, fontWeight: '700' },
+  maxWeight: { fontSize: 10, fontVariant: ['tabular-nums'] },
 });

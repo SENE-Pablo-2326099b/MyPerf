@@ -28,6 +28,37 @@ const MUSCLE_FILTERS = [
   { value: 'core', label: 'Core' },
 ] as const;
 
+// Sub-filters shown when a primary group is selected
+const SPECIFIC_FILTERS: Record<string, Array<{ value: string; label: string; muscles: string[] }>> = {
+  arms: [
+    { value: 'biceps',   label: 'Biceps',       muscles: ['bicep_long', 'bicep_short', 'brachialis'] },
+    { value: 'triceps',  label: 'Triceps',       muscles: ['tricep_long', 'tricep_lateral', 'tricep_medial'] },
+    { value: 'forearms', label: 'Avant-bras',    muscles: ['forearms'] },
+  ],
+  legs: [
+    { value: 'quads',       label: 'Quadriceps', muscles: ['quads'] },
+    { value: 'hamstrings',  label: 'Ischios',    muscles: ['hamstrings'] },
+    { value: 'glutes',      label: 'Fessiers',   muscles: ['glutes'] },
+    { value: 'calves',      label: 'Mollets',    muscles: ['calves'] },
+    { value: 'adductors',   label: 'Adducteurs', muscles: ['adductors'] },
+  ],
+  back: [
+    { value: 'lats',      label: 'Grand dorsal', muscles: ['lats'] },
+    { value: 'traps',     label: 'Trapèzes',     muscles: ['upper_traps', 'mid_traps', 'lower_traps'] },
+    { value: 'rhomboids', label: 'Rhomboïdes',   muscles: ['rhomboids'] },
+    { value: 'lower_back',label: 'Bas du dos',   muscles: ['lower_back'] },
+  ],
+  shoulders: [
+    { value: 'front_delt', label: 'Ant.',  muscles: ['front_delt'] },
+    { value: 'mid_delt',   label: 'Lat.',  muscles: ['mid_delt'] },
+    { value: 'rear_delt',  label: 'Post.', muscles: ['rear_delt'] },
+  ],
+  chest: [
+    { value: 'pec_upper', label: 'Pec. sup.', muscles: ['pec_upper'] },
+    { value: 'pec_lower', label: 'Pec. inf.', muscles: ['pec_lower'] },
+  ],
+};
+
 const EQUIPMENT_FILTERS = [
   { value: 'barbell', label: 'Barre' },
   { value: 'ez_bar', label: 'Barre EZ' },
@@ -80,19 +111,36 @@ export default function ExerciseList({ exercises, onPress, onCreateNew }: Props)
   } = useTheme();
   const [search, setSearch] = useState('');
   const [muscle, setMuscle] = useState<string | null>(null);
+  const [specificMuscle, setSpecificMuscle] = useState<string | null>(null);
   const [equip, setEquip] = useState<string | null>(null);
   const [type, setType] = useState<string | null>(null);
+
+  function handleMuscleToggle(value: string) {
+    if (muscle === value) {
+      setMuscle(null);
+      setSpecificMuscle(null);
+    } else {
+      setMuscle(value);
+      setSpecificMuscle(null);
+    }
+  }
+
+  const specificOptions = muscle ? (SPECIFIC_FILTERS[muscle] ?? []) : [];
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     return exercises.filter(ex => {
       if (q && !ex.name.toLowerCase().includes(q)) return false;
       if (muscle && ex.primaryMuscleGroup !== muscle) return false;
+      if (specificMuscle) {
+        const spec = specificOptions.find(s => s.value === specificMuscle);
+        if (spec && !ex.specificMuscles.some(m => spec.muscles.includes(m))) return false;
+      }
       if (equip && ex.equipment !== equip) return false;
       if (type && ex.exerciseType !== type) return false;
       return true;
     });
-  }, [exercises, search, muscle, equip, type]);
+  }, [exercises, search, muscle, specificMuscle, specificOptions, equip, type]);
 
   // Empty library
   if (exercises.length === 0) {
@@ -146,7 +194,7 @@ export default function ExerciseList({ exercises, onPress, onCreateNew }: Props)
             key={f.value}
             label={f.label}
             active={muscle === f.value}
-            onPress={() => setMuscle(prev => (prev === f.value ? null : f.value))}
+            onPress={() => handleMuscleToggle(f.value)}
           />
         ))}
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -168,6 +216,25 @@ export default function ExerciseList({ exercises, onPress, onCreateNew }: Props)
           />
         ))}
       </ScrollView>
+
+      {/* Specific muscle sub-filter */}
+      {specificOptions.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[styles.filterRow, styles.subFilterRow]}
+        >
+          <Text style={[styles.subFilterLabel, { color: colors.textMuted }]}>↳</Text>
+          {specificOptions.map(f => (
+            <Chip
+              key={f.value}
+              label={f.label}
+              active={specificMuscle === f.value}
+              onPress={() => setSpecificMuscle(prev => (prev === f.value ? null : f.value))}
+            />
+          ))}
+        </ScrollView>
+      )}
 
       {/* Result count */}
       <Text style={[styles.count, { color: colors.textMuted }]}>
@@ -211,6 +278,8 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 16, padding: 0 },
   filterRow: { paddingHorizontal: 16, paddingVertical: 6, gap: 8, alignItems: 'center' },
+  subFilterRow: { paddingTop: 0, paddingBottom: 4 },
+  subFilterLabel: { fontSize: 14, fontWeight: '700', marginRight: 2 },
   divider: { width: 1, height: 20, marginHorizontal: 4 },
   chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1.5 },
   chipText: { fontSize: 13, fontWeight: '500' },

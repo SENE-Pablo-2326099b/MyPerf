@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  Alert,
   Modal,
   ScrollView,
   StyleSheet,
@@ -12,7 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useSessionExercises } from '@/hooks/useSessionExercises';
-import { addExerciseToSession, endSession, reorderExercises, saveSessionAsTemplate } from './sessionActions';
+import { addExerciseToSession, cancelSession, endSession, reorderExercises, saveSessionAsTemplate } from './sessionActions';
 import ExerciseInstanceCard from './ExerciseInstanceCard';
 import ExercisePicker from './ExercisePicker';
 import RestTimer from './RestTimer';
@@ -31,7 +32,7 @@ export default function ActiveSessionView({ session }: Props) {
   const instances = useSessionExercises(session.id);
   const [showPicker, setShowPicker] = useState(false);
   const [elapsed, setElapsed] = useState(() => Date.now() - session.startedAt.getTime());
-  const [restIntention, setRestIntention] = useState<Intention | null>(null);
+  const [restState, setRestState] = useState<{ intention: Intention; restSeconds: number | null } | null>(null);
   const [showEndModal, setShowEndModal] = useState(false);
   const [sessionNotes, setSessionNotes] = useState('');
   const [reorderMode, setReorderMode] = useState(false);
@@ -53,8 +54,8 @@ export default function ActiveSessionView({ session }: Props) {
     [session, instances.length],
   );
 
-  const handleSetComplete = useCallback((intention: Intention) => {
-    setRestIntention(intention);
+  const handleSetComplete = useCallback((intention: Intention, restSeconds: number | null) => {
+    setRestState({ intention, restSeconds });
   }, []);
 
   const handleMove = useCallback(async (fromIdx: number, toIdx: number) => {
@@ -116,6 +117,23 @@ export default function ActiveSessionView({ session }: Props) {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Cancel button */}
+        <TouchableOpacity
+          style={[styles.cancelBtn, { borderColor: colors.border, borderRadius: radius.md }]}
+          onPress={() => Alert.alert(
+            'Annuler la séance ?',
+            'Toutes les séries enregistrées seront supprimées. Cette action est irréversible.',
+            [
+              { text: 'Continuer', style: 'cancel' },
+              { text: 'Annuler la séance', style: 'destructive', onPress: () => cancelSession(session) },
+            ],
+          )}
+          activeOpacity={0.75}
+          hitSlop={8}
+        >
+          <Ionicons name="trash-outline" size={15} color={colors.textMuted} />
+        </TouchableOpacity>
 
         {/* End button */}
         <TouchableOpacity
@@ -193,10 +211,11 @@ export default function ActiveSessionView({ session }: Props) {
       </TouchableOpacity>
 
       {/* ── Rest timer ── */}
-      {restIntention && (
+      {restState && (
         <RestTimer
-          intention={restIntention}
-          onDismiss={() => setRestIntention(null)}
+          intention={restState.intention}
+          initialSeconds={restState.restSeconds}
+          onDismiss={() => setRestState(null)}
         />
       )}
 
@@ -301,6 +320,13 @@ const styles = StyleSheet.create({
   headerCenter: { flex: 1, gap: 1 },
   sessionName: { fontSize: 13, fontWeight: '700' },
   headerMeta: { fontSize: 11 },
+  cancelBtn: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
   endBtn: {
     flexDirection: 'row',
     alignItems: 'center',

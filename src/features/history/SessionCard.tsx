@@ -10,12 +10,17 @@ import { formatDate, formatDuration, formatTime } from '@/utils/format';
 import type Session from '@/db/models/Session';
 import type ExerciseInstance from '@/db/models/ExerciseInstance';
 import type Exercise from '@/db/models/Exercise';
+import type Mesocycle from '@/db/models/Mesocycle';
+import { BLOCK_LABELS, BLOCK_COLORS } from '@/features/planning/blockUtils';
 
 interface Summary {
   exercises: string[];
   completedSets: number;
   totalSets: number;
   tonnage: number;
+  blockLabel: string | null;
+  blockColor: string | null;
+  mesoName: string | null;
 }
 
 function SessionCard({ session }: { session: Session }) {
@@ -49,7 +54,14 @@ function SessionCard({ session }: { session: Session }) {
         .filter((s: any) => s.completed && s.setType !== 'warmup')
         .reduce((sum: number, s: any) => sum + s.weight * (s.reps ?? 0), 0);
 
-      if (alive) setSummary({ exercises: names, completedSets, totalSets, tonnage });
+      // Find mesocycle by date
+      const mesocycles = await database.get<Mesocycle>('mesocycles').query().fetch();
+      const ts = session.startedAt.getTime();
+      const meso = mesocycles.find(m => ts >= m.startDate.getTime() && ts <= m.endDate.getTime());
+      const blockLabel = meso ? BLOCK_LABELS[meso.blockType as keyof typeof BLOCK_LABELS] ?? null : null;
+      const blockColor = meso ? BLOCK_COLORS[meso.blockType as keyof typeof BLOCK_COLORS] ?? null : null;
+
+      if (alive) setSummary({ exercises: names, completedSets, totalSets, tonnage, blockLabel, blockColor, mesoName: meso?.name ?? null });
     })();
     return () => { alive = false; };
   }, [session.id]);
@@ -107,6 +119,13 @@ function SessionCard({ session }: { session: Session }) {
                 {summary.tonnage >= 1000
                   ? `${(summary.tonnage / 1000).toFixed(1)}t`
                   : `${summary.tonnage}kg`}
+              </Text>
+            </View>
+          )}
+          {summary.blockLabel && summary.blockColor && (
+            <View style={[styles.chip, { backgroundColor: summary.blockColor + '20', borderRadius: radius.sm }]}>
+              <Text style={[styles.chipText, { color: summary.blockColor }]}>
+                {summary.blockLabel}
               </Text>
             </View>
           )}

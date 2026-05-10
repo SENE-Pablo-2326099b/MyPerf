@@ -6,7 +6,6 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { useSessions } from '@/hooks/useSessions';
 import { useWeeklyVolume } from '@/hooks/useWeeklyVolume';
 import SessionCard from '@/features/history/SessionCard';
-import BodyMap from '@/features/stats/BodyMap';
 import FrequencyHeatmap from '@/features/stats/FrequencyHeatmap';
 import PRList from '@/features/stats/PRList';
 import ReadinessCard from '@/features/readiness/ReadinessCard';
@@ -45,21 +44,17 @@ function VolumeBar({ label, sets, group }: { label: string; sets: number; group:
     <View style={styles.barRow}>
       <Text style={[styles.barLabel, { color: colors.textMuted }]}>{label}</Text>
       <View style={[styles.barTrack, { backgroundColor: colors.border, borderRadius: radius.sm }]}>
+        <View style={[styles.barFill, {
+          width: `${pct * 100}%` as any,
+          backgroundColor: barColor,
+          borderRadius: radius.sm,
+        }]} />
         {mevPct !== null && (
           <View style={[styles.barMarker, { left: `${mevPct}%` as any, backgroundColor: colors.textMuted + '70' }]} />
         )}
         {mavPct !== null && (
           <View style={[styles.barMarker, { left: `${mavPct}%` as any, backgroundColor: colors.textMuted + '50' }]} />
         )}
-        <View style={[styles.barFill, {
-          width: `${pct * 100}%`,
-          backgroundColor: barColor,
-          borderRadius: radius.sm,
-          shadowColor: barColor,
-          shadowOpacity: sets > 0 ? 0.45 : 0,
-          shadowRadius: 4,
-          shadowOffset: { width: 0, height: 0 },
-        }]} />
       </View>
       <Text style={[styles.barCount, { color: sets > 0 ? colors.text : colors.textMuted }]}>
         {sets}
@@ -125,7 +120,21 @@ function WeeklyVolume() {
             ))}
           </View>
           <VolumeLegend />
-          <BodyMap />
+          <TouchableOpacity
+            style={[styles.bodyMapNav, {
+              backgroundColor: colors.background,
+              borderColor: colors.border,
+              borderRadius: radius.md,
+            }]}
+            onPress={() => router.push('/bodymap')}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="body-outline" size={16} color={colors.accent} />
+            <Text style={[styles.bodyMapNavText, { color: colors.text }]}>
+              Voir la carte musculaire
+            </Text>
+            <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+          </TouchableOpacity>
         </>
       ) : (
         <View style={styles.emptyVolume}>
@@ -248,12 +257,14 @@ const styles = StyleSheet.create({
   barLabel: { width: 52, fontSize: 11, fontWeight: '600', textAlign: 'right' },
   barTrack: { flex: 1, height: 7, overflow: 'hidden', position: 'relative' },
   barFill: { height: '100%', position: 'absolute', left: 0, top: 0, bottom: 0 },
-  barMarker: { position: 'absolute', width: 1.5, top: 0, bottom: 0, zIndex: 2 },
+  barMarker: { position: 'absolute', width: 1.5, top: 0, bottom: 0 },
   barCount: { width: 22, fontSize: 12, fontWeight: '700', fontVariant: ['tabular-nums'], textAlign: 'right' },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
   legendLabel: { fontSize: 10 },
+  bodyMapNav: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderWidth: 1 },
+  bodyMapNavText: { flex: 1, fontSize: 13, fontWeight: '600' },
   emptyVolume: { paddingVertical: 16, alignItems: 'center' },
   emptyVolumeText: { fontSize: 13, textAlign: 'center' },
   searchWrap: {

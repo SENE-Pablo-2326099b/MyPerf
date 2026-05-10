@@ -152,7 +152,6 @@ function ExerciseCard({ exercise, onPress }: Props) {
               </View>
             )}
           </TouchableOpacity>
-          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} style={styles.chevron} />
         </Animated.View>
       </GestureDetector>
 
@@ -196,7 +195,6 @@ const styles = StyleSheet.create({
   metaText: { fontSize: 13 },
   techText: { fontSize: 12 },
   sep: { fontSize: 13 },
-  chevron: { marginRight: 12 },
 });
 
 export default React.memo(ExerciseCard);

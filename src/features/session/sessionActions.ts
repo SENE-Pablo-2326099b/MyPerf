@@ -1,3 +1,4 @@
+import { Q } from '@nozbe/watermelondb';
 import { database } from '@/db/database';
 import type Session from '@/db/models/Session';
 import type ExerciseInstance from '@/db/models/ExerciseInstance';
@@ -163,6 +164,28 @@ export async function saveSessionAsTemplate(
   });
 
   return template;
+}
+
+// Cancel and delete an in-progress session with all its data.
+export async function cancelSession(session: Session): Promise<void> {
+  await database.write(async () => {
+    const instances = await database
+      .get<ExerciseInstance>('exercise_instances')
+      .query(Q.where('session_id', session.id))
+      .fetch();
+
+    const allSets: WorkingSet[] = [];
+    for (const inst of instances) {
+      const sets = await inst.workingSets.fetch();
+      allSets.push(...sets);
+    }
+
+    await database.batch(
+      ...allSets.map(s => s.prepareDestroyPermanently()),
+      ...instances.map(i => i.prepareDestroyPermanently()),
+      session.prepareDestroyPermanently(),
+    );
+  });
 }
 
 // Update notes on an ExerciseInstance.

@@ -290,13 +290,13 @@ export default function CreateMesocycleWizard({ visible, onClose }: Props) {
                   <Text style={[styles.label, { color: colors.textMuted }]}>Macrocycle (optionnel)</Text>
                   <TouchableOpacity
                     style={[styles.macroChip, {
-                      backgroundColor: macrocycleId ? colors.accentDim : colors.surface,
-                      borderColor: macrocycleId ? colors.accent : colors.border,
+                      backgroundColor: macrocycleId === null ? colors.accentDim : colors.surface,
+                      borderColor: macrocycleId === null ? colors.accent : colors.border,
                       borderRadius: radius.sm,
                     }]}
                     onPress={() => setMacrocycleId(null)}
                   >
-                    <Text style={[styles.macroChipText, { color: macrocycleId ? colors.accent : colors.textMuted }]}>
+                    <Text style={[styles.macroChipText, { color: macrocycleId === null ? colors.accent : colors.textMuted }]}>
                       Aucun
                     </Text>
                   </TouchableOpacity>
@@ -304,13 +304,13 @@ export default function CreateMesocycleWizard({ visible, onClose }: Props) {
                     <TouchableOpacity
                       key={mc.id}
                       style={[styles.macroChip, {
-                        backgroundColor: macrocycleId === mc.id ? colors.accentDim : colors.surface,
-                        borderColor: macrocycleId === mc.id ? colors.accent : colors.border,
+                        backgroundColor: macrocycleId !== null && macrocycleId === mc.id ? colors.accentDim : colors.surface,
+                        borderColor: macrocycleId !== null && macrocycleId === mc.id ? colors.accent : colors.border,
                         borderRadius: radius.sm,
                       }]}
                       onPress={() => setMacrocycleId(mc.id)}
                     >
-                      <Text style={[styles.macroChipText, { color: macrocycleId === mc.id ? colors.accent : colors.text }]}>
+                      <Text style={[styles.macroChipText, { color: macrocycleId !== null && macrocycleId === mc.id ? colors.accent : colors.text }]}>
                         {mc.name}
                       </Text>
                     </TouchableOpacity>

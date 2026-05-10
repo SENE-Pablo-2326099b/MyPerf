@@ -157,6 +157,23 @@ export default function MicrocycleEditor({ visible, mesocycle, existingMicrocycl
   const [weeks, setWeeks] = useState<MicroWeek[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const addWeek = () => {
+    setWeeks(prev => {
+      const lastNum = prev[prev.length - 1]?.weekNumber ?? 0;
+      const defaultLabel = blockToMicroLabel(mesocycle.blockType);
+      return [...prev, {
+        weekNumber: lastNum + 1,
+        label: defaultLabel,
+        volumePct: MICRO_VOL_DEFAULTS[defaultLabel],
+        notes: null,
+      }];
+    });
+  };
+
+  const removeLastWeek = () => {
+    setWeeks(prev => prev.length > 1 ? prev.slice(0, -1) : prev);
+  };
+
   useEffect(() => {
     if (visible) {
       setWeeks(buildDefaultWeeks(mesocycle, existingMicrocycles));
@@ -252,6 +269,21 @@ export default function MicrocycleEditor({ visible, mesocycle, existingMicrocycl
 
         {/* Footer */}
         <View style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+          {/* Add / remove week */}
+          <TouchableOpacity
+            style={[styles.weekBtn, { borderColor: colors.border, borderRadius: radius.sm }]}
+            onPress={removeLastWeek}
+            disabled={weeks.length <= 1}
+          >
+            <Ionicons name="remove" size={16} color={weeks.length <= 1 ? colors.border : colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.weekBtn, { borderColor: colors.border, borderRadius: radius.sm }]}
+            onPress={addWeek}
+          >
+            <Ionicons name="add" size={16} color={colors.text} />
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.cancelBtn, { borderColor: colors.border, borderRadius: radius.sm }]}
             onPress={onClose}
@@ -312,6 +344,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  weekBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
   },
   cancelBtn: {
     paddingHorizontal: 16,

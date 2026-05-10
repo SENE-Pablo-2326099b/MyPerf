@@ -18,8 +18,10 @@ import type Session from '@/db/models/Session';
 import type ExerciseInstance from '@/db/models/ExerciseInstance';
 import type Exercise from '@/db/models/Exercise';
 import type WorkingSet from '@/db/models/WorkingSet';
+import type Mesocycle from '@/db/models/Mesocycle';
 import type { SetType } from '@/db/models/WorkingSet';
 import type { Intention } from '@/db/models/ExerciseInstance';
+import { BLOCK_LABELS, BLOCK_COLORS, type BlockType } from '@/features/planning/blockUtils';
 
 interface SetRow {
   id: string;
@@ -81,10 +83,18 @@ function formatTempo(e: number, pb: number, c: number, pt: number): string | nul
   return `${e}-${pb}-${c === -1 ? 'X' : c}-${pt}`;
 }
 
+interface BlockContext {
+  name: string;
+  blockType: BlockType;
+  weekNumber: number;
+  totalWeeks: number;
+}
+
 export default function SessionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { theme: { colors } } = useTheme();
   const [detail, setDetail] = useState<Detail | null>(null);
+  const [blockContext, setBlockContext] = useState<BlockContext | null>(null);
   const [chartExercise, setChartExercise] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
@@ -137,6 +147,21 @@ export default function SessionDetailScreen() {
         .filter(s => s.completed && s.reps != null)
         .reduce((acc, s) => acc + s.weight * (s.reps ?? 0), 0) / 1000;
 
+      // Find which mesocycle this session belongs to (by date range)
+      const mesocycles = await database.get<Mesocycle>('mesocycles').query().fetch();
+      const sessionTs = session.startedAt.getTime();
+      const meso = mesocycles.find(
+        m => sessionTs >= m.startDate.getTime() && sessionTs <= m.endDate.getTime(),
+      );
+      if (meso && alive) {
+        const MS_WEEK = 7 * 24 * 3600 * 1000;
+        const totalMs = meso.endDate.getTime() - meso.startDate.getTime();
+        const totalWeeks = Math.max(1, Math.round(totalMs / MS_WEEK));
+        const elapsed = sessionTs - meso.startDate.getTime();
+        const weekNumber = Math.min(totalWeeks, Math.max(1, Math.ceil(elapsed / MS_WEEK)));
+        setBlockContext({ name: meso.name, blockType: meso.blockType as BlockType, weekNumber, totalWeeks });
+      }
+
       if (alive) setDetail({ session, instances: instanceRows, totalSets, completedSets, totalVolumeTons });
     })();
 
@@ -170,6 +195,18 @@ export default function SessionDetailScreen() {
           <Text style={[styles.headerTime, { color: colors.textMuted }]}>
             {formatTime(session.startedAt)}{duration ? ` · ${duration}` : ''}
           </Text>
+          {blockContext && (
+            <View style={styles.blockBadgeRow}>
+              <View style={[styles.blockBadge, { backgroundColor: BLOCK_COLORS[blockContext.blockType] + '22' }]}>
+                <Text style={[styles.blockBadgeText, { color: BLOCK_COLORS[blockContext.blockType] }]}>
+                  {BLOCK_LABELS[blockContext.blockType]}
+                </Text>
+              </View>
+              <Text style={[styles.blockWeek, { color: colors.textMuted }]}>
+                {blockContext.name} · S{blockContext.weekNumber}/{blockContext.totalWeeks}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -347,6 +384,10 @@ const styles = StyleSheet.create({
   headerCenter: { flex: 1 },
   headerDate: { fontSize: 17, fontWeight: '700', textTransform: 'capitalize' },
   headerTime: { fontSize: 13, marginTop: 2 },
+  blockBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' },
+  blockBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  blockBadgeText: { fontSize: 11, fontWeight: '700' },
+  blockWeek: { fontSize: 11 },
   scroll: { padding: 16, paddingBottom: 48, gap: 12 },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 4 },
   card: { borderRadius: 14, borderWidth: 1, overflow: 'hidden' },

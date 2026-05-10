@@ -15,6 +15,17 @@ export function useMonthlyFrequency(): FrequencyData {
   const [data, setData] = useState<FrequencyData>(() =>
     Object.fromEntries(FREQ_GROUPS.map(g => [g, [0, 0, 0, 0]])) as FrequencyData,
   );
+  // tick increments whenever a session is added/removed, triggering a recompute
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const sub = database
+      .get<Session>('sessions')
+      .query(Q.where('ended_at', Q.notEq(null)))
+      .observe()
+      .subscribe(() => setTick(t => t + 1));
+    return () => sub.unsubscribe();
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -23,7 +34,6 @@ export function useMonthlyFrequency(): FrequencyData {
 
     const weekBoundary = (weeksAgo: number) => now - weeksAgo * 7 * 24 * 3600 * 1000;
 
-    // week index 0 = oldest (started_at in [now-28d, now-21d])
     function weekIndex(ts: number): number {
       if (ts >= weekBoundary(1)) return 3;
       if (ts >= weekBoundary(2)) return 2;
@@ -40,7 +50,6 @@ export function useMonthlyFrequency(): FrequencyData {
         )
         .fetch();
 
-      // group -> week -> set of session ids (to count unique sessions, not sets)
       const counts: Record<string, Set<string>[]> = {};
       for (const g of FREQ_GROUPS) counts[g] = [new Set(), new Set(), new Set(), new Set()];
 
@@ -69,7 +78,7 @@ export function useMonthlyFrequency(): FrequencyData {
     })();
 
     return () => { alive = false; };
-  }, []);
+  }, [tick]);
 
   return data;
 }

@@ -43,14 +43,25 @@ function nearestSec(s: number): number {
   );
 }
 
-export default function RestTimer({ intention, onDismiss }: { intention: Intention; onDismiss: () => void }) {
+export default function RestTimer({
+  intention,
+  initialSeconds,
+  onDismiss,
+}: {
+  intention: Intention;
+  initialSeconds?: number | null;
+  onDismiss: () => void;
+}) {
   const { theme: { colors, radius, mode } } = useTheme();
   const isNeo = mode === 'neo';
-  const [totalSeconds, setTotalSeconds] = useState(REST_DEFAULTS[intention]);
-  const [remaining, setRemaining] = useState(REST_DEFAULTS[intention]);
+  const defaultSecs = initialSeconds != null && initialSeconds > 0
+    ? initialSeconds
+    : REST_DEFAULTS[intention];
+  const [totalSeconds, setTotalSeconds] = useState(defaultSecs);
+  const [remaining, setRemaining] = useState(defaultSecs);
   const [editingDur, setEditingDur] = useState(false);
-  const [editMin, setEditMin] = useState<number | null>(Math.floor(REST_DEFAULTS[intention] / 60));
-  const [editSec, setEditSec] = useState<number | null>(nearestSec(REST_DEFAULTS[intention] % 60));
+  const [editMin, setEditMin] = useState<number | null>(Math.floor(defaultSecs / 60));
+  const [editSec, setEditSec] = useState<number | null>(nearestSec(defaultSecs % 60));
   const slideAnim = useRef(new Animated.Value(140)).current;
 
   useEffect(() => {

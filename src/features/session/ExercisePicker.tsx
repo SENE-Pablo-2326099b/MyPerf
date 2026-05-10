@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import {
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -119,6 +121,10 @@ export default function ExercisePicker({ visible, onSelect, onClose }: Props) {
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
+      <KeyboardAvoidingView
+        style={styles.kav}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <View style={[styles.root, { backgroundColor: colors.background }]}>
         {/* ── Header ── */}
         <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
@@ -148,7 +154,6 @@ export default function ExercisePicker({ visible, onSelect, onClose }: Props) {
             onChangeText={setSearch}
             placeholder="Rechercher un exercice…"
             placeholderTextColor={colors.textMuted}
-            autoFocus
             clearButtonMode="while-editing"
           />
         </View>
@@ -189,11 +194,13 @@ export default function ExercisePicker({ visible, onSelect, onClose }: Props) {
           keyboardDismissMode="on-drag"
         />
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  kav: { flex: 1 },
   root: { flex: 1 },
 
   header: {

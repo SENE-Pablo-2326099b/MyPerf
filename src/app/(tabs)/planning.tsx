@@ -30,24 +30,7 @@ import type WorkoutTemplate from '@/db/models/WorkoutTemplate';
 import type ScheduledSession from '@/db/models/ScheduledSession';
 import type Session from '@/db/models/Session';
 
-// ── Semaine helpers ──────────────────────────────────────────────────────────
-
-function getWeekDays(baseMonday: Date): Date[] {
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(baseMonday);
-    d.setDate(d.getDate() + i);
-    return d;
-  });
-}
-
-function getMonday(date: Date): Date {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function isSameDay(a: Date, b: Date): boolean {
   return (
@@ -57,52 +40,80 @@ function isSameDay(a: Date, b: Date): boolean {
   );
 }
 
-const DAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+function getMonthGridDays(year: number, month: number): Date[] {
+  const firstOfMonth = new Date(year, month, 1);
+  const dow = firstOfMonth.getDay();
+  const offset = dow === 0 ? 6 : dow - 1;
+  const gridStart = new Date(firstOfMonth);
+  gridStart.setDate(gridStart.getDate() - offset);
 
-// ── Week Calendar ────────────────────────────────────────────────────────────
+  const lastOfMonth = new Date(year, month + 1, 0);
+  const lastDow = lastOfMonth.getDay();
+  const lastOffset = lastDow === 0 ? 0 : 7 - lastDow;
+  const gridEnd = new Date(lastOfMonth);
+  gridEnd.setDate(gridEnd.getDate() + lastOffset);
 
-interface WeekCalendarProps {
-  monday: Date;
-  selectedDate: Date;
-  onSelectDate: (d: Date) => void;
-  onPrevWeek: () => void;
-  onNextWeek: () => void;
-  scheduledByDay: Map<string, number>;
-  completedByDay: Map<string, number>;
+  const days: Date[] = [];
+  const d = new Date(gridStart);
+  while (d <= gridEnd) {
+    days.push(new Date(d));
+    d.setDate(d.getDate() + 1);
+  }
+  return days;
 }
 
-function WeekCalendar({
-  monday,
+const DAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+
+// ── Month Calendar ───────────────────────────────────────────────────────────
+
+function MonthCalendar({
+  monthStart,
   selectedDate,
   onSelectDate,
-  onPrevWeek,
-  onNextWeek,
+  onPrevMonth,
+  onNextMonth,
   scheduledByDay,
   completedByDay,
-}: WeekCalendarProps) {
+}: {
+  monthStart: Date;
+  selectedDate: Date;
+  onSelectDate: (d: Date) => void;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+  scheduledByDay: Map<string, number>;
+  completedByDay: Map<string, number>;
+}) {
   const { theme: { colors } } = useTheme();
   const today = new Date();
-  const days = getWeekDays(monday);
-
-  const monthLabel = monday.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const days = getMonthGridDays(monthStart.getFullYear(), monthStart.getMonth());
+  const currentMonth = monthStart.getMonth();
+  const monthLabel = monthStart.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 
   return (
     <View style={[styles.calendarWrap, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
       {/* Month nav */}
       <View style={styles.monthRow}>
-        <TouchableOpacity onPress={onPrevWeek} hitSlop={12}>
+        <TouchableOpacity onPress={onPrevMonth} hitSlop={12}>
           <Ionicons name="chevron-back" size={22} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.monthLabel, { color: colors.text }]}>{monthLabel}</Text>
-        <TouchableOpacity onPress={onNextWeek} hitSlop={12}>
+        <TouchableOpacity onPress={onNextMonth} hitSlop={12}>
           <Ionicons name="chevron-forward" size={22} color={colors.text} />
         </TouchableOpacity>
       </View>
 
-      {/* Days */}
+      {/* Day headers */}
       <View style={styles.daysRow}>
-        {days.map((day, idx) => {
+        {DAY_LABELS.map(d => (
+          <Text key={d} style={[styles.dayHeaderLabel, { color: colors.textMuted }]}>{d}</Text>
+        ))}
+      </View>
+
+      {/* Month grid */}
+      <View style={styles.monthGrid}>
+        {days.map(day => {
           const key = day.toISOString().split('T')[0];
+          const isCurrentMonth = day.getMonth() === currentMonth;
           const isToday = isSameDay(day, today);
           const isSelected = isSameDay(day, selectedDate);
           const hasScheduled = (scheduledByDay.get(key) ?? 0) > 0;
@@ -112,15 +123,12 @@ function WeekCalendar({
             <TouchableOpacity
               key={key}
               style={[
-                styles.dayCell,
-                isSelected && { backgroundColor: colors.accent + '22', borderRadius: 12 },
+                styles.monthCell,
+                isSelected && { backgroundColor: colors.accent + '22', borderRadius: 8 },
               ]}
               onPress={() => onSelectDate(day)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.dayName, { color: isToday ? colors.accent : colors.textMuted }]}>
-                {DAY_LABELS[idx]}
-              </Text>
               <View style={[
                 styles.dayNumber,
                 isToday && { backgroundColor: colors.accent },
@@ -128,12 +136,12 @@ function WeekCalendar({
               ]}>
                 <Text style={[
                   styles.dayNumberText,
-                  { color: isToday ? '#fff' : isSelected ? colors.accent : colors.text },
+                  { color: !isCurrentMonth ? colors.border : isToday ? '#fff' : isSelected ? colors.accent : colors.text },
+                  !isCurrentMonth && { fontSize: 11 },
                 ]}>
                   {day.getDate()}
                 </Text>
               </View>
-              {/* Dots */}
               <View style={styles.dotRow}>
                 {hasCompleted && <View style={[styles.dot, { backgroundColor: colors.success }]} />}
                 {hasScheduled && <View style={[styles.dot, { backgroundColor: colors.accent }]} />}
@@ -278,7 +286,10 @@ export default function PlanningScreen() {
   const macrocycles = useMacrocycles();
 
   const [tab, setTab] = useState<TabMode>('calendar');
-  const [monday, setMonday] = useState(() => getMonday(new Date()));
+  const [monthStart, setMonthStart] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
   const [selectedDate, setSelectedDate] = useState(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -290,14 +301,15 @@ export default function PlanningScreen() {
   const [showMacroModal, setShowMacroModal] = useState(false);
   const [mesoRefreshKey, setMesoRefreshKey] = useState(0);
 
-  const weekEnd = new Date(monday);
-  weekEnd.setDate(weekEnd.getDate() + 6);
-  weekEnd.setHours(23, 59, 59, 999);
+  const gridDays = getMonthGridDays(monthStart.getFullYear(), monthStart.getMonth());
+  const gridStart = gridDays[0];
+  const gridEnd = new Date(gridDays[gridDays.length - 1]);
+  gridEnd.setHours(23, 59, 59, 999);
 
-  const scheduledSessions = useScheduledSessionsInRange(monday, weekEnd);
+  const scheduledSessions = useScheduledSessionsInRange(gridStart, gridEnd);
   const completedSessions = useSessions();
 
-  // Build dot maps for calendar
+  // Build dot maps for full month grid
   const scheduledByDay = new Map<string, number>();
   for (const s of scheduledSessions) {
     const key = s.plannedDate.toISOString().split('T')[0];
@@ -305,10 +317,8 @@ export default function PlanningScreen() {
   }
   const completedByDay = new Map<string, number>();
   for (const s of completedSessions) {
-    if (s.startedAt >= monday && s.startedAt <= weekEnd) {
-      const key = s.startedAt.toISOString().split('T')[0];
-      completedByDay.set(key, (completedByDay.get(key) ?? 0) + 1);
-    }
+    const key = s.startedAt.toISOString().split('T')[0];
+    completedByDay.set(key, (completedByDay.get(key) ?? 0) + 1);
   }
 
   const selectedKey = selectedDate.toISOString().split('T')[0];
@@ -394,12 +404,12 @@ export default function PlanningScreen() {
         </>
       ) : tab === 'calendar' ? (
         <>
-          <WeekCalendar
-            monday={monday}
+          <MonthCalendar
+            monthStart={monthStart}
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
-            onPrevWeek={() => setMonday(d => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; })}
-            onNextWeek={() => setMonday(d => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; })}
+            onPrevMonth={() => setMonthStart(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
+            onNextMonth={() => setMonthStart(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
             scheduledByDay={scheduledByDay}
             completedByDay={completedByDay}
           />
@@ -521,19 +531,20 @@ const styles = StyleSheet.create({
   },
   tabText: { fontSize: 15, fontWeight: '600' },
   calendarWrap: {
-    paddingTop: 12,
-    paddingBottom: 8,
+    paddingTop: 10,
+    paddingBottom: 6,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 12 },
+  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 8 },
   monthLabel: { fontSize: 15, fontWeight: '600', textTransform: 'capitalize' },
-  daysRow: { flexDirection: 'row', paddingHorizontal: 8 },
-  dayCell: { flex: 1, alignItems: 'center', paddingVertical: 6, gap: 4 },
-  dayName: { fontSize: 11, fontWeight: '600' },
-  dayNumber: { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  dayNumberText: { fontSize: 14, fontWeight: '700' },
-  dotRow: { flexDirection: 'row', gap: 3, height: 6 },
-  dot: { width: 5, height: 5, borderRadius: 3 },
+  daysRow: { flexDirection: 'row', paddingHorizontal: 6, marginBottom: 2 },
+  dayHeaderLabel: { flex: 1, textAlign: 'center', fontSize: 10, fontWeight: '700' },
+  monthGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 4 },
+  monthCell: { width: '14.285714%', alignItems: 'center', paddingVertical: 2, gap: 2 },
+  dayNumber: { width: 26, height: 26, borderRadius: 13, justifyContent: 'center', alignItems: 'center' },
+  dayNumberText: { fontSize: 13, fontWeight: '700' },
+  dotRow: { flexDirection: 'row', gap: 3, height: 5 },
+  dot: { width: 4, height: 4, borderRadius: 2 },
   dayDetail: { flex: 1 },
   dayDetailContent: { padding: 16, paddingBottom: 40 },
   dayDetailHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },

@@ -37,7 +37,7 @@ const INTENTION_COLORS: Record<Intention, string> = {
 
 interface Props {
   instance: ExerciseInstance;
-  onSetComplete?: (intention: Intention) => void;
+  onSetComplete?: (intention: Intention, restSeconds: number | null) => void;
   reorderMode?: boolean;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
@@ -100,6 +100,27 @@ function ExerciseInstanceCard({
   const completedCount = sets.filter(s => s.completed).length;
   const allDone = sets.length > 0 && completedCount === sets.length;
   const intentionLabel = INTENTIONS.find(i => i.value === instance.intention)?.label ?? instance.intention;
+
+  // Objectifs du template
+  const hasTargets =
+    instance.targetSets != null ||
+    instance.repRangeMin != null ||
+    instance.rpeTarget != null ||
+    instance.restSeconds != null;
+
+  const targetParts: string[] = [];
+  if (instance.repRangeMin != null && instance.repRangeMax != null && instance.repRangeMin !== instance.repRangeMax) {
+    targetParts.push(`${instance.repRangeMin}–${instance.repRangeMax} reps`);
+  } else if (instance.repRangeMin != null) {
+    targetParts.push(`${instance.repRangeMin} reps`);
+  }
+  if (instance.rpeTarget != null) targetParts.push(`RPE ${instance.rpeTarget}`);
+  if (instance.restSeconds != null) {
+    const m = Math.floor(instance.restSeconds / 60);
+    const s = instance.restSeconds % 60;
+    targetParts.push(`⏱ ${m}:${String(s).padStart(2, '0')}`);
+  }
+  const targetLabel = targetParts.join(' · ');
 
   return (
     <View style={[
@@ -201,6 +222,40 @@ function ExerciseInstanceCard({
         )}
       </View>
 
+      {/* ── Bandeau objectifs du template ── */}
+      {hasTargets && !reorderMode && (
+        <View style={[styles.targetBanner, { backgroundColor: colors.accent + '0A', borderBottomColor: colors.border }]}>
+          <Ionicons name="flag-outline" size={11} color={colors.accent} />
+          {instance.targetSets != null && (
+            <Text style={[styles.targetSets, { color: colors.accent }]}>
+              {instance.targetSets}×
+            </Text>
+          )}
+          {targetLabel.length > 0 && (
+            <Text style={[styles.targetLabel, { color: colors.textMuted }]} numberOfLines={1}>
+              {targetLabel}
+            </Text>
+          )}
+          {instance.targetSets != null && (
+            <View style={styles.targetDots}>
+              {Array.from({ length: Math.min(instance.targetSets, 8) }).map((_, i) => (
+                <View
+                  key={i}
+                  style={[styles.targetDot, {
+                    backgroundColor: i < completedCount ? colors.success : colors.border,
+                  }]}
+                />
+              ))}
+              {instance.targetSets > 8 && (
+                <Text style={[styles.targetDotMore, { color: colors.textMuted }]}>
+                  {completedCount}/{instance.targetSets}
+                </Text>
+              )}
+            </View>
+          )}
+        </View>
+      )}
+
       {/* ── Intention picker ── */}
       {showIntentionPicker && (
         <View style={[styles.intentionPicker, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
@@ -235,11 +290,10 @@ function ExerciseInstanceCard({
       {/* ── Column headers ── */}
       {sets.length > 0 && (
         <View style={[styles.colHeaders, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.colHdr, { color: colors.textMuted, width: 18 }]}>#</Text>
-          <Text style={[styles.colHdr, { color: colors.textMuted, width: 80 }]}>TYPE</Text>
-          <Text style={[styles.colHdr, { color: colors.textMuted, flex: 1, textAlign: 'center' }]}>POIDS</Text>
+          <View style={{ width: 20 }} />
+          <Text style={[styles.colHdr, { color: colors.textMuted, flex: 1.3, textAlign: 'center' }]}>POIDS</Text>
           <Text style={[styles.colHdr, { color: colors.textMuted, flex: 1, textAlign: 'center' }]}>REPS</Text>
-          <View style={{ width: 42 }} />
+          <View style={{ width: 48 }} />
         </View>
       )}
 
@@ -250,7 +304,7 @@ function ExerciseInstanceCard({
           set={s}
           index={idx}
           ghost={lastSets[idx]}
-          onCompleted={() => onSetComplete?.(instance.intention)}
+          onCompleted={() => onSetComplete?.(instance.intention, instance.restSeconds)}
         />
       ))}
 
@@ -334,6 +388,20 @@ const styles = StyleSheet.create({
   },
   progressTxt: { fontSize: 13, fontWeight: '800', fontVariant: ['tabular-nums'] },
 
+  targetBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  targetSets: { fontSize: 13, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  targetLabel: { flex: 1, fontSize: 12, fontWeight: '600' },
+  targetDots: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  targetDot: { width: 7, height: 7, borderRadius: 4 },
+  targetDotMore: { fontSize: 11, fontWeight: '700', fontVariant: ['tabular-nums'] },
+
   intentionPicker: {
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -354,9 +422,9 @@ const styles = StyleSheet.create({
   colHeaders: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    gap: 6,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   colHdr: { fontSize: 10, fontWeight: '700', letterSpacing: 0.8 },

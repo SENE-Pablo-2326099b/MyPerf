@@ -27,19 +27,25 @@ interface Props {
 
 interface NumberFieldProps {
   label: string;
+  hint?: string;
   unit: string;
   value: string;
   onChangeText: (v: string) => void;
   large?: boolean;
 }
 
-function NumberField({ label, unit, value, onChangeText, large }: NumberFieldProps) {
+function NumberField({ label, hint, unit, value, onChangeText, large }: NumberFieldProps) {
   const { theme: { colors, radius } } = useTheme();
   return (
     <View style={styles.fieldRow}>
-      <Text style={[styles.fieldLabel, { color: colors.textMuted, fontSize: large ? 14 : 12 }]}>
-        {label}
-      </Text>
+      <View style={styles.fieldLabelWrap}>
+        <Text style={[styles.fieldLabel, { color: colors.textMuted, fontSize: large ? 14 : 12 }]}>
+          {label}
+        </Text>
+        {hint && (
+          <Text style={[styles.fieldHint, { color: colors.textMuted }]}>{hint}</Text>
+        )}
+      </View>
       <View style={[styles.fieldInputWrap, {
         backgroundColor: colors.surfaceRaised,
         borderColor: colors.border,
@@ -155,7 +161,7 @@ export default function BodyMetricModal({ visible, onClose }: Props) {
     >
       <KeyboardAvoidingView
         style={[styles.root, { backgroundColor: colors.background }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         {/* Header */}
         <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
@@ -203,14 +209,14 @@ export default function BodyMetricModal({ visible, onClose }: Props) {
           {expanded && (
             <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg }]}>
               <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>MENSURATIONS</Text>
-              <NumberField label="% Masse grasse" unit="%" value={bodyFat} onChangeText={setBodyFat} />
-              <NumberField label="Poitrine" unit="cm" value={chest} onChangeText={setChest} />
-              <NumberField label="Tour de taille" unit="cm" value={waist} onChangeText={setWaist} />
-              <NumberField label="Hanches" unit="cm" value={hips} onChangeText={setHips} />
-              <NumberField label="Bras gauche" unit="cm" value={leftArm} onChangeText={setLeftArm} />
-              <NumberField label="Bras droit" unit="cm" value={rightArm} onChangeText={setRightArm} />
-              <NumberField label="Cuisse gauche" unit="cm" value={leftThigh} onChangeText={setLeftThigh} />
-              <NumberField label="Cuisse droite" unit="cm" value={rightThigh} onChangeText={setRightThigh} />
+              <NumberField label="% Masse grasse" hint="mesure au pied à coulisse ou estimation" unit="%" value={bodyFat} onChangeText={setBodyFat} />
+              <NumberField label="Poitrine" hint="tour de poitrine au niveau des mamelons" unit="cm" value={chest} onChangeText={setChest} />
+              <NumberField label="Tour de taille" hint="au nombril, à plat de ventre" unit="cm" value={waist} onChangeText={setWaist} />
+              <NumberField label="Hanches" hint="au point le plus large des fessiers" unit="cm" value={hips} onChangeText={setHips} />
+              <NumberField label="Bras gauche" hint="biceps contracté, pic du muscle" unit="cm" value={leftArm} onChangeText={setLeftArm} />
+              <NumberField label="Bras droit" hint="biceps contracté, pic du muscle" unit="cm" value={rightArm} onChangeText={setRightArm} />
+              <NumberField label="Cuisse gauche" hint="mi-cuisse, entre genou et hanche" unit="cm" value={leftThigh} onChangeText={setLeftThigh} />
+              <NumberField label="Cuisse droite" hint="mi-cuisse, entre genou et hanche" unit="cm" value={rightThigh} onChangeText={setRightThigh} />
             </View>
           )}
 
@@ -289,7 +295,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  fieldLabel: { flex: 1, fontWeight: '600' },
+  fieldLabelWrap: { flex: 1, gap: 1 },
+  fieldLabel: { fontWeight: '600' },
+  fieldHint: { fontSize: 10, fontStyle: 'italic' },
   fieldInputWrap: {
     flexDirection: 'row',
     alignItems: 'center',

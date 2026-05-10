@@ -9,6 +9,7 @@ import type WorkingSet from '@/db/models/WorkingSet';
 export interface PR {
   exerciseId: string;
   exerciseName: string;
+  muscleGroup: string;
   maxWeight: number;
   maxE1RM: number;
   lastDate: Date;
@@ -40,6 +41,7 @@ export function usePRs(): PR[] {
 
       const map = new Map<string, {
         name: string;
+        muscleGroup: string;
         maxWeight: number;
         maxE1RM: number;
         lastDate: Date;
@@ -69,6 +71,7 @@ export function usePRs(): PR[] {
 
           const entry = map.get(ex.id) ?? {
             name: ex.name,
+            muscleGroup: ex.primaryMuscleGroup,
             maxWeight: 0,
             maxE1RM: 0,
             lastDate: session.startedAt,
@@ -95,6 +98,7 @@ export function usePRs(): PR[] {
       const result: PR[] = Array.from(map.entries()).map(([exerciseId, entry]) => ({
         exerciseId,
         exerciseName: entry.name,
+        muscleGroup: entry.muscleGroup,
         maxWeight: entry.maxWeight,
         maxE1RM: entry.maxE1RM,
         lastDate: entry.lastDate,
