@@ -43,6 +43,7 @@ interface InstanceRow {
   exerciseId: string;
   exerciseName: string;
   intention: Intention;
+  notes: string | null;
   sets: SetRow[];
 }
 
@@ -96,6 +97,7 @@ export default function SessionDetailScreen() {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [blockContext, setBlockContext] = useState<BlockContext | null>(null);
   const [chartExercise, setChartExercise] = useState<{ id: string; name: string } | null>(null);
+  const [openIntraCharts, setOpenIntraCharts] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!id) return;
@@ -122,6 +124,7 @@ export default function SessionDetailScreen() {
             exerciseId: ex?.id ?? '',
             exerciseName: ex?.name ?? '?',
             intention: inst.intention,
+            notes: inst.notes ?? null,
             sets: sets.map(s => ({
               id: s.id,
               setNumber: s.setNumber,
@@ -255,6 +258,23 @@ export default function SessionDetailScreen() {
                     {INTENTION_LABELS[inst.intention] ?? inst.intention}
                   </Text>
                 </View>
+                {inst.sets.filter(s => s.completed && s.weight > 0).length >= 2 && (
+                  <TouchableOpacity
+                    hitSlop={10}
+                    onPress={() => setOpenIntraCharts(prev => {
+                      const next = new Set(prev);
+                      if (next.has(inst.id)) next.delete(inst.id);
+                      else next.add(inst.id);
+                      return next;
+                    })}
+                  >
+                    <Ionicons
+                      name="pulse-outline"
+                      size={16}
+                      color={openIntraCharts.has(inst.id) ? colors.accent : colors.textMuted}
+                    />
+                  </TouchableOpacity>
+                )}
                 {inst.exerciseId !== '' && (
                   <TouchableOpacity
                     hitSlop={10}
@@ -312,6 +332,40 @@ export default function SessionDetailScreen() {
 
             {inst.sets.length === 0 && (
               <Text style={[styles.emptySets, { color: colors.textMuted }]}>Aucune série enregistrée</Text>
+            )}
+
+            {/* Intra-session chart */}
+            {openIntraCharts.has(inst.id) && (() => {
+              const completed = inst.sets.filter(s => s.completed && s.weight > 0);
+              const maxW = Math.max(...completed.map(s => s.weight));
+              return (
+                <View style={[styles.intraChart, { borderTopColor: colors.border }]}>
+                  <Text style={[styles.intraChartLabel, { color: colors.textMuted }]}>
+                    Poids par série
+                  </Text>
+                  <View style={styles.intraChartBars}>
+                    {completed.map((s, i) => (
+                      <View key={s.id} style={styles.intraBar}>
+                        <Text style={[styles.intraBarVal, { color: colors.accent }]}>{s.weight}</Text>
+                        <View style={[styles.intraBarFill, {
+                          height: Math.max(4, Math.round((s.weight / maxW) * 40)),
+                          backgroundColor: colors.accent,
+                          opacity: 0.5 + (i / Math.max(completed.length - 1, 1)) * 0.5,
+                        }]} />
+                        <Text style={[styles.intraBarIdx, { color: colors.textMuted }]}>{i + 1}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              );
+            })()}
+
+            {/* Exercise notes */}
+            {inst.notes && (
+              <View style={[styles.notesSection, { borderTopColor: colors.border }]}>
+                <Ionicons name="document-text-outline" size={13} color={colors.textMuted} />
+                <Text style={[styles.notesText, { color: colors.textMuted }]}>{inst.notes}</Text>
+              </View>
             )}
           </View>
         ))}
@@ -447,4 +501,26 @@ const styles = StyleSheet.create({
   emptySets: { padding: 14, fontSize: 14, textAlign: 'center' },
   emptyState: { alignItems: 'center', gap: 12, paddingTop: 40 },
   emptyText: { fontSize: 14, textAlign: 'center' },
+  intraChart: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 10,
+    gap: 8,
+  },
+  intraChartLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.8 },
+  intraChartBars: { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
+  intraBar: { alignItems: 'center', gap: 3, flex: 1 },
+  intraBarVal: { fontSize: 9, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  intraBarFill: { width: '100%', borderRadius: 3 },
+  intraBarIdx: { fontSize: 9, fontVariant: ['tabular-nums'] },
+  notesSection: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  notesText: { flex: 1, fontSize: 12, lineHeight: 18, fontStyle: 'italic' },
 });

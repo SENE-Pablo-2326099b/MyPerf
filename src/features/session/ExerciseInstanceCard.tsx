@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/theme/ThemeProvider';
+import { MUSCLE_COLORS } from '@/features/stats/muscleColors';
 import { useWorkingSets } from '@/hooks/useWorkingSets';
 import { useLastSets } from '@/hooks/useLastSets';
 import { addSet, removeExercise, updateIntention, updateInstanceNotes } from './sessionActions';
@@ -97,6 +98,9 @@ function ExerciseInstanceCard({
   }, [instance, exercise]);
 
   const intentionColor = INTENTION_COLORS[instance.intention] ?? colors.accent;
+  const muscleColor = exercise?.primaryMuscleGroup
+    ? (MUSCLE_COLORS[exercise.primaryMuscleGroup] ?? intentionColor)
+    : intentionColor;
   const completedCount = sets.filter(s => s.completed).length;
   const allDone = sets.length > 0 && completedCount === sets.length;
   const intentionLabel = INTENTIONS.find(i => i.value === instance.intention)?.label ?? instance.intention;
@@ -128,7 +132,7 @@ function ExerciseInstanceCard({
       {
         backgroundColor: colors.surface,
         borderColor: colors.border,
-        borderLeftColor: intentionColor,
+        borderLeftColor: muscleColor,
       },
     ]}>
       {/* ── Card header ── */}
@@ -291,7 +295,7 @@ function ExerciseInstanceCard({
       {sets.length > 0 && (
         <View style={[styles.colHeaders, { borderBottomColor: colors.border }]}>
           <View style={{ width: 20 }} />
-          <Text style={[styles.colHdr, { color: colors.textMuted, flex: 1.3, textAlign: 'center' }]}>POIDS</Text>
+          <Text style={[styles.colHdr, { color: colors.textMuted, flex: 1.6, textAlign: 'center' }]}>POIDS</Text>
           <Text style={[styles.colHdr, { color: colors.textMuted, flex: 1, textAlign: 'center' }]}>REPS</Text>
           <View style={{ width: 48 }} />
         </View>
@@ -422,9 +426,9 @@ const styles = StyleSheet.create({
   colHeaders: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 5,
-    gap: 6,
+    gap: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   colHdr: { fontSize: 10, fontWeight: '700', letterSpacing: 0.8 },

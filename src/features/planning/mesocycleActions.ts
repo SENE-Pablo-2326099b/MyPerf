@@ -90,6 +90,9 @@ export async function updateMesocycle(
     name: string;
     blockType: BlockType;
     notes: string | null;
+    startDate: Date;
+    endDate: Date;
+    weekPattern: WeekPattern;
   }>,
 ): Promise<void> {
   await database.write(async () =>
@@ -97,6 +100,9 @@ export async function updateMesocycle(
       if (patch.name !== undefined) m.name = patch.name!.trim();
       if (patch.blockType !== undefined) m.blockType = patch.blockType!;
       if (patch.notes !== undefined) m.notes = patch.notes;
+      if (patch.startDate !== undefined) m.startDate = midnight(patch.startDate!);
+      if (patch.endDate !== undefined) m.endDate = midnight(patch.endDate!);
+      if (patch.weekPattern !== undefined) m.weekPattern = patch.weekPattern!;
       m.updatedAt = new Date();
     }),
   );

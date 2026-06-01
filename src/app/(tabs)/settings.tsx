@@ -116,6 +116,23 @@ export default function SettingsScreen() {
         </View>
         <Ionicons name="share-outline" size={16} color={colors.textMuted} />
       </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.row, {
+          backgroundColor: colors.surface,
+          borderColor: colors.danger + '44',
+          borderRadius: radius.md,
+        }]}
+        onPress={handleClear}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="trash-outline" size={18} color={colors.danger} />
+        <View style={styles.rowTexts}>
+          <Text style={[styles.rowLabel, { color: colors.danger }]}>Effacer toutes les données</Text>
+          <Text style={[styles.rowSub, { color: colors.textMuted }]}>
+            Supprime exercices, séances, planification — irréversible
+          </Text>
+        </View>
+      </TouchableOpacity>
 
       {/* Dev tools — masqués en production */}
       {__DEV__ && (
@@ -137,23 +154,6 @@ export default function SettingsScreen() {
               <Text style={[styles.rowLabel, { color: colors.text }]}>Insérer données de test</Text>
               <Text style={[styles.rowSub, { color: colors.textMuted }]}>
                 18 exos · 3 templates · 12 séances · macrocycle · mésocycles
-              </Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.row, {
-              backgroundColor: colors.surface,
-              borderColor: colors.danger + '44',
-              borderRadius: radius.md,
-            }]}
-            onPress={handleClear}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="trash-outline" size={18} color={colors.danger} />
-            <View style={styles.rowTexts}>
-              <Text style={[styles.rowLabel, { color: colors.danger }]}>Effacer toutes les données</Text>
-              <Text style={[styles.rowSub, { color: colors.textMuted }]}>
-                Supprime exercices, séances, planification — irréversible
               </Text>
             </View>
           </TouchableOpacity>

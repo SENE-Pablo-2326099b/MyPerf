@@ -8,6 +8,7 @@ import { countMesocycleSessions, deleteMacrocycle, deleteMesocycle } from './mes
 import { getMesocycleStatus, getMesocycleWeek } from '@/db/models/Mesocycle';
 import { useMicrocycles } from '@/hooks/useMicrocycles';
 import MicrocycleEditor from './MicrocycleEditor';
+import MesocycleEditModal from './MesocycleEditModal';
 import type Mesocycle from '@/db/models/Mesocycle';
 import type Macrocycle from '@/db/models/Macrocycle';
 
@@ -132,6 +133,7 @@ function MesocycleCard({ mesocycle, onDeleted }: { mesocycle: Mesocycle; onDelet
   const status = getMesocycleStatus(mesocycle);
   const color = BLOCK_COLORS[mesocycle.blockType];
   const [sessionCount, setSessionCount] = useState<number | null>(null);
+  const [showEdit, setShowEdit] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -199,6 +201,9 @@ function MesocycleCard({ mesocycle, onDeleted }: { mesocycle: Mesocycle; onDelet
             </Text>
           </View>
         </View>
+        <TouchableOpacity onPress={() => setShowEdit(true)} hitSlop={12} style={styles.editBtn}>
+          <Ionicons name="create-outline" size={16} color={colors.textMuted} />
+        </TouchableOpacity>
         <TouchableOpacity onPress={handleDelete} hitSlop={12} style={styles.deleteBtn}>
           <Ionicons name="trash-outline" size={15} color={colors.textMuted} />
         </TouchableOpacity>
@@ -246,6 +251,13 @@ function MesocycleCard({ mesocycle, onDeleted }: { mesocycle: Mesocycle; onDelet
 
       {/* Microcycles */}
       <MicroSummary mesocycle={mesocycle} />
+
+      <MesocycleEditModal
+        visible={showEdit}
+        mesocycle={mesocycle}
+        onClose={() => setShowEdit(false)}
+        onSaved={onDeleted}
+      />
     </View>
   );
 }
@@ -455,6 +467,7 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 10, fontWeight: '800' },
   blockBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3 },
   blockBadgeText: { fontSize: 10, fontWeight: '800' },
+  editBtn: { padding: 2 },
   deleteBtn: { padding: 2 },
   mesoMeta: { flexDirection: 'row', justifyContent: 'space-between' },
   metaText: { fontSize: 12 },

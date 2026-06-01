@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -17,9 +17,11 @@ import { addExerciseToSession, cancelSession, endSession, reorderExercises, save
 import ExerciseInstanceCard from './ExerciseInstanceCard';
 import ExercisePicker from './ExercisePicker';
 import RestTimer from './RestTimer';
+import ReorderSheet from './ReorderSheet';
 import { formatDuration } from '@/utils/format';
 import type Session from '@/db/models/Session';
 import type Exercise from '@/db/models/Exercise';
+import type ExerciseInstance from '@/db/models/ExerciseInstance';
 import type { Intention } from '@/db/models/ExerciseInstance';
 
 interface Props {
@@ -35,7 +37,9 @@ export default function ActiveSessionView({ session }: Props) {
   const [restState, setRestState] = useState<{ intention: Intention; restSeconds: number | null } | null>(null);
   const [showEndModal, setShowEndModal] = useState(false);
   const [sessionNotes, setSessionNotes] = useState('');
-  const [reorderMode, setReorderMode] = useState(false);
+  const [showReorder, setShowReorder] = useState(false);
+  const [exerciseNames, setExerciseNames] = useState<Record<string, string>>({});
+  const resolvedRef = useRef<Set<string>>(new Set());
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [templateName, setTemplateName] = useState('');
 
@@ -45,6 +49,16 @@ export default function ActiveSessionView({ session }: Props) {
     }, 1000);
     return () => clearInterval(id);
   }, [session.startedAt]);
+
+  useEffect(() => {
+    instances.forEach((inst: ExerciseInstance) => {
+      if (resolvedRef.current.has(inst.id)) return;
+      resolvedRef.current.add(inst.id);
+      (inst.exercise.fetch() as Promise<Exercise | null>).then(ex => {
+        if (ex) setExerciseNames(prev => ({ ...prev, [inst.id]: ex.name }));
+      });
+    });
+  }, [instances]);
 
   const handleSelectExercise = useCallback(
     async (exercise: Exercise) => {
@@ -58,11 +72,12 @@ export default function ActiveSessionView({ session }: Props) {
     setRestState({ intention, restSeconds });
   }, []);
 
-  const handleMove = useCallback(async (fromIdx: number, toIdx: number) => {
-    const next = [...instances];
-    const [moved] = next.splice(fromIdx, 1);
-    next.splice(toIdx, 0, moved);
-    await reorderExercises(next);
+  const handleRestDismiss = useCallback(() => setRestState(null), []);
+
+  const handleReorderByIds = useCallback(async (orderedIds: string[]) => {
+    const idToInst = Object.fromEntries(instances.map(i => [i.id, i]));
+    const ordered = orderedIds.map(id => idToInst[id]).filter(Boolean) as ExerciseInstance[];
+    await reorderExercises(ordered);
   }, [instances]);
 
   const confirmEnd = useCallback(async () => {
@@ -108,11 +123,11 @@ export default function ActiveSessionView({ session }: Props) {
           {instances.length > 1 && (
             <TouchableOpacity
               style={styles.reorderBtn}
-              onPress={() => setReorderMode(v => !v)}
+              onPress={() => setShowReorder(true)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.reorderBtnTxt, { color: reorderMode ? colors.accent : colors.textMuted }]}>
-                {reorderMode ? '✓ Terminé' : '≡ Ordre'}
+              <Text style={[styles.reorderBtnTxt, { color: colors.textMuted }]}>
+                ≡ Ordre
               </Text>
             </TouchableOpacity>
           )}
@@ -177,16 +192,11 @@ export default function ActiveSessionView({ session }: Props) {
             </Text>
           </View>
         ) : (
-          instances.map((instance, idx) => (
+          instances.map((instance) => (
             <ExerciseInstanceCard
               key={instance.id}
               instance={instance}
               onSetComplete={handleSetComplete}
-              reorderMode={reorderMode}
-              isFirst={idx === 0}
-              isLast={idx === instances.length - 1}
-              onMoveUp={idx > 0 ? () => handleMove(idx, idx - 1) : undefined}
-              onMoveDown={idx < instances.length - 1 ? () => handleMove(idx, idx + 1) : undefined}
             />
           ))
         )}
@@ -215,7 +225,7 @@ export default function ActiveSessionView({ session }: Props) {
         <RestTimer
           intention={restState.intention}
           initialSeconds={restState.restSeconds}
-          onDismiss={() => setRestState(null)}
+          onDismiss={handleRestDismiss}
         />
       )}
 
@@ -299,6 +309,13 @@ export default function ActiveSessionView({ session }: Props) {
         visible={showPicker}
         onSelect={handleSelectExercise}
         onClose={() => setShowPicker(false)}
+      />
+
+      <ReorderSheet
+        visible={showReorder}
+        items={instances.map(i => ({ id: i.id, name: exerciseNames[i.id] ?? '…' }))}
+        onReorder={handleReorderByIds}
+        onClose={() => setShowReorder(false)}
       />
     </View>
   );

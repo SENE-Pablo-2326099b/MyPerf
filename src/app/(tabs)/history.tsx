@@ -7,6 +7,7 @@ import { useSessions } from '@/hooks/useSessions';
 import { useWeeklyVolume } from '@/hooks/useWeeklyVolume';
 import SessionCard from '@/features/history/SessionCard';
 import FrequencyHeatmap from '@/features/stats/FrequencyHeatmap';
+import FourWeekVolumeChart from '@/features/stats/FourWeekVolumeChart';
 import PRList from '@/features/stats/PRList';
 import ReadinessCard from '@/features/readiness/ReadinessCard';
 import { VOLUME_LANDMARKS, volumeZone } from '@/features/stats/volumeLandmarks';
@@ -186,6 +187,7 @@ export default function HistoryScreen() {
           </TouchableOpacity>
           <ReadinessCard />
           <PRList />
+          <FourWeekVolumeChart />
           <FrequencyHeatmap />
 
           {/* Recherche */}

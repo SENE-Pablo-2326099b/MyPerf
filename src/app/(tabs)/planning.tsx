@@ -64,6 +64,10 @@ function getMonthGridDays(year: number, month: number): Date[] {
 
 const DAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
+function localDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 // ── Month Calendar ───────────────────────────────────────────────────────────
 
 function MonthCalendar({
@@ -112,7 +116,7 @@ function MonthCalendar({
       {/* Month grid */}
       <View style={styles.monthGrid}>
         {days.map(day => {
-          const key = day.toISOString().split('T')[0];
+          const key = localDateKey(day);
           const isCurrentMonth = day.getMonth() === currentMonth;
           const isToday = isSameDay(day, today);
           const isSelected = isSameDay(day, selectedDate);
@@ -312,22 +316,22 @@ export default function PlanningScreen() {
   // Build dot maps for full month grid
   const scheduledByDay = new Map<string, number>();
   for (const s of scheduledSessions) {
-    const key = s.plannedDate.toISOString().split('T')[0];
+    const key = localDateKey(s.plannedDate);
     scheduledByDay.set(key, (scheduledByDay.get(key) ?? 0) + 1);
   }
   const completedByDay = new Map<string, number>();
   for (const s of completedSessions) {
-    const key = s.startedAt.toISOString().split('T')[0];
+    const key = localDateKey(s.startedAt);
     completedByDay.set(key, (completedByDay.get(key) ?? 0) + 1);
   }
 
-  const selectedKey = selectedDate.toISOString().split('T')[0];
+  const selectedKey = localDateKey(selectedDate);
 
   const dayScheduled = scheduledSessions.filter(
-    s => s.plannedDate.toISOString().split('T')[0] === selectedKey,
+    s => localDateKey(s.plannedDate) === selectedKey,
   );
   const dayCompleted = completedSessions.filter(
-    s => s.startedAt.toISOString().split('T')[0] === selectedKey,
+    s => localDateKey(s.startedAt) === selectedKey,
   );
 
   const handleStartScheduled = useCallback(
